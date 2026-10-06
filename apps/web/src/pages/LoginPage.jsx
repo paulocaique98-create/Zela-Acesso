@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { BRAND } from '../brand';
 import { useAuth } from '../auth/AuthProvider';
@@ -7,12 +7,12 @@ export function LoginPage() {
   const { session, loading, signIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
 
   if (!loading && session) return <Navigate to="/" replace />;
 
-  async function onSubmit(e: FormEvent) {
+  async function onSubmit(e) {
     e.preventDefault();
     setBusy(true);
     setError(await signIn(email.trim(), password));

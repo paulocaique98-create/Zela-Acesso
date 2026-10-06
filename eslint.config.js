@@ -1,8 +1,7 @@
 import js from '@eslint/js';
 import globals from 'globals';
-import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
+export default [
   {
     ignores: [
       '**/dist/**',
@@ -13,21 +12,24 @@ export default tseslint.config(
       'playwright-report/**',
       'supabase/.temp/**',
       '.claude/**',
-      '**/database.types.ts',
     ],
   },
   js.configs.recommended,
-  ...tseslint.configs.recommended,
   {
-    languageOptions: { globals: { ...globals.node, ...globals.browser } },
+    files: ['**/*.{js,jsx,mjs}'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      parserOptions: { ecmaFeatures: { jsx: true } },
+      globals: { ...globals.node, ...globals.browser },
+    },
     rules: {
-      '@typescript-eslint/no-explicit-any': 'error',
-      '@typescript-eslint/consistent-type-imports': 'error',
       'no-console': ['error', { allow: ['warn', 'error'] }],
+      'no-unused-vars': ['error', { argsIgnorePattern: '^_', caughtErrors: 'none' }],
     },
   },
   {
     files: ['scripts/**/*.mjs'],
     rules: { 'no-console': 'off' },
   },
-);
+];

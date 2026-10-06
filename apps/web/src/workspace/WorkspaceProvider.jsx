@@ -1,39 +1,31 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from 'react';
-import { can, canInAnyScope, type MembershipView, type Permission } from '@zela/domain';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import { can, canInAnyScope } from '@zela/domain';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../auth/AuthProvider';
 
-export interface WorkspaceTenant {
-  id: string;
-  name: string;
-  slug: string;
-}
+/**
+ * @typedef {{ id: string, name: string, slug: string }} WorkspaceTenant
+ * @typedef {import('@zela/domain').MembershipView} MembershipView
+ * @typedef {import('@zela/domain').Permission} Permission
+ * @typedef {{
+ *   loading: boolean,
+ *   error: string | null,
+ *   tenants: WorkspaceTenant[],
+ *   memberships: MembershipView[],
+ *   current: WorkspaceTenant | null,
+ *   selectTenant: (tenantId: string) => void,
+ *   allowed: (permission: Permission, siteId?: string) => boolean,
+ *   allowedInAnyScope: (permission: Permission) => boolean,
+ * }} WorkspaceState
+ * `allowed` e apenas para UI (o enforcement real e RLS no banco); `allowedInAnyScope` vale para
+ * recursos por site: visivel se a permissao existe em algum escopo (linhas filtradas por RLS).
+ */
 
-interface WorkspaceState {
-  loading: boolean;
-  error: string | null;
-  tenants: WorkspaceTenant[];
-  memberships: MembershipView[];
-  current: WorkspaceTenant | null;
-  selectTenant: (tenantId: string) => void;
-  /** Apenas para UI. O enforcement real e RLS no banco. */
-  allowed: (permission: Permission, siteId?: string) => boolean;
-  /** Recursos por site: visivel se a permissao existe em algum escopo (linhas filtradas por RLS). */
-  allowedInAnyScope: (permission: Permission) => boolean;
-}
-
-const Ctx = createContext<WorkspaceState | null>(null);
+/** @type {import('react').Context<WorkspaceState | null>} */
+const Ctx = createContext(null);
 const STORAGE_KEY = 'zela.currentTenant';
 
-function readStored(): string | null {
+function readStored() {
   try {
     return localStorage.getItem(STORAGE_KEY);
   } catch {
@@ -41,14 +33,14 @@ function readStored(): string | null {
   }
 }
 
-export function WorkspaceProvider({ children }: { children: ReactNode }) {
+export function WorkspaceProvider({ children }) {
   const { session } = useAuth();
   const userId = session?.user.id;
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [tenants, setTenants] = useState<WorkspaceTenant[]>([]);
-  const [memberships, setMemberships] = useState<MembershipView[]>([]);
-  const [currentId, setCurrentId] = useState<string | null>(readStored());
+  const [error, setError] = useState(null);
+  const [tenants, setTenants] = useState([]);
+  const [memberships, setMemberships] = useState([]);
+  const [currentId, setCurrentId] = useState(readStored());
 
   useEffect(() => {
     if (!userId) return;
@@ -73,7 +65,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           scopeSiteIds: r.scope_site_ids,
         })),
       );
-      const seen = new Map<string, WorkspaceTenant>();
+      const seen = new Map();
       for (const r of rows) if (r.tenants) seen.set(r.tenants.id, r.tenants);
       setTenants([...seen.values()]);
       setError(null);
@@ -89,7 +81,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     [tenants, currentId],
   );
 
-  const selectTenant = useCallback((tenantId: string) => {
+  const selectTenant = useCallback((tenantId) => {
     setCurrentId(tenantId);
     try {
       localStorage.setItem(STORAGE_KEY, tenantId);
@@ -98,7 +90,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
-  const value = useMemo<WorkspaceState>(
+  const value = useMemo(
     () => ({
       loading: userId ? loading : false,
       error,
@@ -117,7 +109,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
 
-export function useWorkspace(): WorkspaceState {
+/** @returns {WorkspaceState} */
+export function useWorkspace() {
   const ctx = useContext(Ctx);
   if (!ctx) throw new Error('useWorkspace fora de WorkspaceProvider');
   return ctx;

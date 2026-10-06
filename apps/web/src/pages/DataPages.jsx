@@ -1,11 +1,10 @@
-import type { Permission } from '@zela/domain';
-import type { ReactNode } from 'react';
 import { DataTable } from '../components/DataTable';
 import { supabase } from '../lib/supabase';
 import { useQuery } from '../lib/useQuery';
 import { useWorkspace } from '../workspace/WorkspaceProvider';
 
-const ROLE_LABEL: Record<string, string> = {
+/** @type {Record<string, string>} */
+const ROLE_LABEL = {
   organization_owner: 'Proprietário',
   organization_admin: 'Administrador',
   security_manager: 'Gestor de segurança',
@@ -16,17 +15,13 @@ const ROLE_LABEL: Record<string, string> = {
   viewer: 'Visualizador',
 };
 
-export const roleLabel = (role: string): string => ROLE_LABEL[role] ?? role;
+/** @param {string} role */
+export const roleLabel = (role) => ROLE_LABEL[role] ?? role;
 
-function Guard({
-  permission,
-  siteLevel = false,
-  children,
-}: {
-  permission: Permission;
-  siteLevel?: boolean;
-  children: ReactNode;
-}) {
+/**
+ * @param {{ permission: import('@zela/domain').Permission, siteLevel?: boolean, children: import('react').ReactNode }} props
+ */
+function Guard({ permission, siteLevel = false, children }) {
   const { allowed, allowedInAnyScope } = useWorkspace();
   if (!(siteLevel ? allowedInAnyScope(permission) : allowed(permission))) {
     return <p role="status">Você não tem permissão para ver esta página.</p>;
@@ -34,13 +29,11 @@ function Guard({
   return <>{children}</>;
 }
 
-function Status<T>({
-  q,
-  children,
-}: {
-  q: { data: T | null; error: string | null; loading: boolean };
-  children: (d: T) => ReactNode;
-}) {
+/**
+ * @template T
+ * @param {{ q: import('../lib/useQuery').QueryState<T>, children: (d: T) => import('react').ReactNode }} props
+ */
+function Status({ q, children }) {
   if (q.loading) return <p>Carregando…</p>;
   if (q.error || !q.data)
     return (

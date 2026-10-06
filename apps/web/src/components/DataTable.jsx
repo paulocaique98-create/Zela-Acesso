@@ -1,16 +1,7 @@
-import type { ReactNode } from 'react';
-
-export function DataTable({
-  caption,
-  headers,
-  rows,
-  empty,
-}: {
-  caption: string;
-  headers: string[];
-  rows: ReactNode[][];
-  empty: string;
-}) {
+/**
+ * @param {{ caption: string, headers: string[], rows: import('react').ReactNode[][], empty: string }} props
+ */
+export function DataTable({ caption, headers, rows, empty }) {
   return (
     <div
       className="overflow-x-auto rounded-lg border"

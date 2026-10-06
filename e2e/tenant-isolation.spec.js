@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { API, DEV_PASSWORD, login, loginOk } from './helpers';
+import { API, DEV_PASSWORD, login, loginOk } from './helpers.js';
 
 test.describe('autenticacao', () => {
   test('rota protegida redireciona para /login', async ({ page }) => {
@@ -56,7 +56,8 @@ test.describe('isolamento entre organizacoes (UI)', () => {
 });
 
 test.describe('isolamento via API (RLS real, sem UI)', () => {
-  async function token(email: string): Promise<{ jwt: string; key: string }> {
+  /** @param {string} email @returns {Promise<{ jwt: string, key: string }>} */
+  async function token(email) {
     const key = process.env['E2E_PUBLISHABLE_KEY'] ?? '';
     const r = await fetch(`${API}/auth/v1/token?grant_type=password`, {
       method: 'POST',
@@ -64,7 +65,7 @@ test.describe('isolamento via API (RLS real, sem UI)', () => {
       body: JSON.stringify({ email, password: DEV_PASSWORD }),
     });
     expect(r.status).toBe(200);
-    const body = (await r.json()) as { access_token: string };
+    const body = await r.json();
     return { jwt: body.access_token, key };
   }
 
@@ -79,11 +80,9 @@ test.describe('isolamento via API (RLS real, sem UI)', () => {
     expect(all).toHaveLength(1);
     expect(all[0].name).toBe('Beta - Matriz');
     for (const table of ['memberships', 'audit_log']) {
-      const rows = (await (
+      const rows = await (
         await fetch(`${API}/rest/v1/${table}?select=tenant_id`, { headers: h })
-      ).json()) as {
-        tenant_id: string;
-      }[];
+      ).json();
       expect(new Set(rows.map((r) => r.tenant_id)).size).toBeLessThanOrEqual(1);
     }
   });

@@ -10,4 +10,3 @@ docs
 test-results
 playwright-report
 CLAUDE.md
-**/database.types.ts

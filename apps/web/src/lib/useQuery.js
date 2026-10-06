@@ -1,14 +1,16 @@
 import { useEffect, useState } from 'react';
 
-export interface QueryState<T> {
-  data: T | null;
-  error: string | null;
-  loading: boolean;
-}
+/** @template T @typedef {{ data: T | null, error: string | null, loading: boolean }} QueryState */
 
 /** Carrega dados assincronos descartando respostas de requisicoes antigas (troca de tenant). */
-export function useQuery<T>(load: () => Promise<T>, deps: readonly unknown[]): QueryState<T> {
-  const [state, setState] = useState<QueryState<T>>({ data: null, error: null, loading: true });
+/**
+ * @template T
+ * @param {() => Promise<T>} load
+ * @param {readonly unknown[]} deps
+ * @returns {QueryState<T>}
+ */
+export function useQuery(load, deps) {
+  const [state, setState] = useState({ data: null, error: null, loading: true });
 
   useEffect(() => {
     let active = true;

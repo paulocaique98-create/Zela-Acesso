@@ -1,7 +1,7 @@
 // Compara a matriz RBAC do dominio (TS) com public.role_permissions do banco local.
 // Le somente do container do Zela Acesso. Falha (exit 1) se houver divergencia.
 import { spawnSync } from 'node:child_process';
-import { ROLE_PERMISSIONS } from '../packages/domain/src/rbac.ts';
+import { ROLE_PERMISSIONS } from '../packages/domain/src/rbac.js';
 
 const CONTAINER = 'supabase_db_zela-acesso-local';
 

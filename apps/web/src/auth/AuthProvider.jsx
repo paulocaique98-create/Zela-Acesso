@@ -1,18 +1,21 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
-import type { Session } from '@supabase/supabase-js';
+import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-interface AuthState {
-  session: Session | null;
-  loading: boolean;
-  signIn: (email: string, password: string) => Promise<string | null>;
-  signOut: () => Promise<void>;
-}
+/**
+ * @typedef {import('@supabase/supabase-js').Session} Session
+ * @typedef {{
+ *   session: Session | null,
+ *   loading: boolean,
+ *   signIn: (email: string, password: string) => Promise<string | null>,
+ *   signOut: () => Promise<void>,
+ * }} AuthState
+ */
 
-const AuthContext = createContext<AuthState | null>(null);
+/** @type {import('react').Context<AuthState | null>} */
+const AuthContext = createContext(null);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [session, setSession] = useState<Session | null>(null);
+export function AuthProvider({ children }) {
+  const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -29,7 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const value = useMemo<AuthState>(
+  const value = useMemo(
     () => ({
       session,
       loading,
@@ -48,7 +51,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-export function useAuth(): AuthState {
+/** @returns {AuthState} */
+export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth fora de AuthProvider');
   return ctx;

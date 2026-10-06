@@ -1,18 +1,16 @@
 // Validacao do ambiente publico. Recusa chaves privilegiadas: service_role nunca chega ao navegador.
 
-export interface PublicEnv {
-  supabaseUrl: string;
-  supabasePublishableKey: string;
-}
+/** @typedef {{ supabaseUrl: string, supabasePublishableKey: string }} PublicEnv */
 
-function jwtRole(token: string): string | null {
+/** @param {string} token @returns {string | null} */
+function jwtRole(token) {
   const parts = token.split('.');
   if (parts.length !== 3 || !parts[1]) return null;
   try {
     const json = atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'));
-    const payload: unknown = JSON.parse(json);
+    const payload = JSON.parse(json);
     if (typeof payload === 'object' && payload !== null && 'role' in payload) {
-      const role = (payload as { role: unknown }).role;
+      const role = payload.role;
       return typeof role === 'string' ? role : null;
     }
   } catch {
@@ -21,13 +19,15 @@ function jwtRole(token: string): string | null {
   return null;
 }
 
-export function isPrivilegedKey(key: string): boolean {
+/** @param {string} key */
+export function isPrivilegedKey(key) {
   if (key.startsWith('sb_secret_')) return true;
   const role = jwtRole(key);
   return role !== null && role !== 'anon';
 }
 
-export function parseEnv(raw: Record<string, string | undefined>): PublicEnv {
+/** @param {Record<string, string | undefined>} raw @returns {PublicEnv} */
+export function parseEnv(raw) {
   const url = raw['VITE_SUPABASE_URL']?.trim();
   const key = raw['VITE_SUPABASE_PUBLISHABLE_KEY']?.trim();
   if (!url) throw new Error('VITE_SUPABASE_URL ausente');

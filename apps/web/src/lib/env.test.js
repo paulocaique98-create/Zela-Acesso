@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { isPrivilegedKey, parseEnv } from './env';
 
-function fakeJwt(role: string): string {
-  const enc = (o: object) => btoa(JSON.stringify(o)).replace(/=+$/, '');
+function fakeJwt(role) {
+  const enc = (o) => btoa(JSON.stringify(o)).replace(/=+$/, '');
   return `${enc({ alg: 'HS256', typ: 'JWT' })}.${enc({ role })}.assinatura`;
 }
 
@@ -43,8 +43,8 @@ describe('parseEnv', () => {
       parseEnv({ ...ok, VITE_SUPABASE_PUBLISHABLE_KEY: secret });
       throw new Error('deveria falhar');
     } catch (e) {
-      expect((e as Error).message).toMatch(/privilegiada/);
-      expect((e as Error).message).not.toContain('SEGREDO123');
+      expect(e.message).toMatch(/privilegiada/);
+      expect(e.message).not.toContain('SEGREDO123');
     }
   });
 });

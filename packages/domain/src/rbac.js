@@ -11,25 +11,16 @@ export const TENANT_ROLES = [
   'auditor',
   'installer',
   'viewer',
-] as const;
-export type TenantRole = (typeof TENANT_ROLES)[number];
+];
+/** @typedef {'organization_owner' | 'organization_admin' | 'security_manager' | 'receptionist' | 'hr_manager' | 'auditor' | 'installer' | 'viewer'} TenantRole */
 
-export const PLATFORM_ROLES = ['platform_owner', 'platform_support'] as const;
-export type PlatformRole = (typeof PLATFORM_ROLES)[number];
+export const PLATFORM_ROLES = ['platform_owner', 'platform_support'];
+/** @typedef {'platform_owner' | 'platform_support'} PlatformRole */
 
-export type Permission =
-  | 'tenant:update'
-  | 'member:read'
-  | 'member:invite'
-  | 'member:update_role'
-  | 'member:remove'
-  | 'site:read'
-  | 'site:create'
-  | 'site:update'
-  | 'site:delete'
-  | 'audit:read';
+/** @typedef {'tenant:update' | 'member:read' | 'member:invite' | 'member:update_role' | 'member:remove' | 'site:read' | 'site:create' | 'site:update' | 'site:delete' | 'audit:read'} Permission */
 
-export const ROLE_PERMISSIONS: Readonly<Record<TenantRole, readonly Permission[]>> = {
+/** @type {Readonly<Record<TenantRole, readonly Permission[]>>} */
+export const ROLE_PERMISSIONS = {
   organization_owner: [
     'tenant:update',
     'member:read',
@@ -62,21 +53,20 @@ export const ROLE_PERMISSIONS: Readonly<Record<TenantRole, readonly Permission[]
 };
 
 /** Hierarquia: quem tem rank menor nao atribui nem altera papel de rank igual ou maior (exceto owner). */
-export function roleRank(role: TenantRole): 1 | 2 | 3 {
+/** @param {TenantRole} role @returns {1 | 2 | 3} */
+export function roleRank(role) {
   if (role === 'organization_owner') return 3;
   if (role === 'organization_admin') return 2;
   return 1;
 }
 
-export interface MembershipView {
-  tenantId: string;
-  role: TenantRole;
-  status: 'active' | 'suspended';
-  /** null = tenant inteiro. Array nunca vazio. */
-  scopeSiteIds: readonly string[] | null;
-}
+/**
+ * `scopeSiteIds`: null = tenant inteiro; array nunca vazio.
+ * @typedef {{ tenantId: string, role: TenantRole, status: 'active' | 'suspended', scopeSiteIds: readonly string[] | null }} MembershipView
+ */
 
-export function roleHasPermission(role: TenantRole, permission: Permission): boolean {
+/** @param {TenantRole} role @param {Permission} permission */
+export function roleHasPermission(role, permission) {
   return ROLE_PERMISSIONS[role].includes(permission);
 }
 
@@ -84,13 +74,13 @@ export function roleHasPermission(role: TenantRole, permission: Permission): boo
  * Mesma semantica de app_private.has_permission: sem siteId (operacao de nivel tenant)
  * exige escopo tenant-inteiro; com siteId aceita escopo tenant-inteiro ou que contenha o site.
  * Nao considera status do tenant (o servidor considera).
+ * @param {readonly MembershipView[]} memberships
+ * @param {string} tenantId
+ * @param {Permission} permission
+ * @param {string} [siteId]
+ * @returns {boolean}
  */
-export function can(
-  memberships: readonly MembershipView[],
-  tenantId: string,
-  permission: Permission,
-  siteId?: string,
-): boolean {
+export function can(memberships, tenantId, permission, siteId) {
   return memberships.some(
     (m) =>
       m.tenantId === tenantId &&
@@ -103,20 +93,22 @@ export function can(
 /**
  * Visibilidade na UI de recursos por site: o usuario tem a permissao em ALGUM escopo do tenant
  * (inclusive restrito a sites). Nao autoriza nada: as linhas efetivas sao filtradas por RLS.
+ * @param {readonly MembershipView[]} memberships
+ * @param {string} tenantId
+ * @param {Permission} permission
+ * @returns {boolean}
  */
-export function canInAnyScope(
-  memberships: readonly MembershipView[],
-  tenantId: string,
-  permission: Permission,
-): boolean {
+export function canInAnyScope(memberships, tenantId, permission) {
   return memberships.some(
     (m) =>
       m.tenantId === tenantId && m.status === 'active' && roleHasPermission(m.role, permission),
   );
 }
 
-/** Pode o ator atribuir/alterar `target`? Espelha app_private.guard_membership (sem autoalteracao). */
-export function canManageRole(actor: TenantRole, target: TenantRole): boolean {
+/** Pode o ator atribuir/alterar `target`? Espelha app_private.guard_membership (sem autoalteracao).
+ * @param {TenantRole} actor @param {TenantRole} target
+ */
+export function canManageRole(actor, target) {
   const actorRank = roleRank(actor);
   return actorRank === 3 || roleRank(target) < actorRank;
 }

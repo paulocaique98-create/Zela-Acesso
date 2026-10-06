@@ -17,7 +17,7 @@ Grep/Glob antes de Read; trechos de 80–150 linhas; não reler arquivo já anal
 - Supabase local: `project_id = "zela-acesso-local"`, portas 55xxx. Nunca `link`, `db push`, `functions deploy`, `secrets set` ou `db reset --linked` em desenvolvimento. Nunca copiar `.env`/chaves do Zela Escola.
 
 ## Stack
-React + Vite + TypeScript strict + Tailwind; Supabase (Postgres, Auth, Storage, Realtime, Edge Functions) com RLS; pnpm monorepo; Vitest; Playwright; lint/format/typecheck/CI. Fixar versões só após verificar compatibilidade.
+React 19 + Vite 8 + Tailwind v4, **JavaScript/JSX sem TypeScript** (tipos documentados com JSDoc nos contratos de domínio); Supabase (Postgres, Auth, Storage, Realtime, Edge Functions/Deno) com RLS; Edge Agent local segue em Node (D-005); pnpm monorepo; Vitest; Playwright; lint/format/CI. Sem `tsc`: a segurança de tipos vem de testes, RLS e do check `rbac:drift`. Fixar versões só após verificar compatibilidade.
 
 ## Regras de domínio
 - Multi-tenant: `tenant_id` + RLS em tudo; nunca confiar no frontend; nunca `service_role` no frontend; Storage privado; testar cross-tenant; nunca "resolver" erro com policy permissiva.

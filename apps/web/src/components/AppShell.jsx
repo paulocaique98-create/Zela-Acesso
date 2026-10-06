@@ -1,11 +1,11 @@
 import { NavLink, Navigate, Outlet } from 'react-router-dom';
-import type { Permission } from '@zela/domain';
 import { BRAND } from '../brand';
 import { useAuth } from '../auth/AuthProvider';
 import { useWorkspace } from '../workspace/WorkspaceProvider';
 
 // siteLevel: recurso por site, visivel a quem tem a permissao em qualquer escopo (RLS filtra as linhas).
-const NAV: { to: string; label: string; permission: Permission | null; siteLevel?: boolean }[] = [
+/** @type {{ to: string, label: string, permission: import('@zela/domain').Permission | null, siteLevel?: boolean }[]} */
+const NAV = [
   { to: '/', label: 'Visão geral', permission: null },
   { to: '/sites', label: 'Locais', permission: 'site:read', siteLevel: true },
   { to: '/membros', label: 'Membros', permission: 'member:read' },

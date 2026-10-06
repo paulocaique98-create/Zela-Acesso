@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   quality:
-    name: lint, typecheck, unit
+    name: lint, format, unit
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,7 +26,6 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm format:check
-      - run: pnpm typecheck
       - run: pnpm test
 
   database-and-e2e:

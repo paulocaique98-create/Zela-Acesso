@@ -8,7 +8,7 @@ Atualizado: 2026-10-06
 ## Entregue na Fase 1 (evidência: executado em 2026-10-06, máquina local)
 | Item | Estado | Evidência |
 |---|---|---|
-| Monorepo pnpm (apps/web, packages/domain), TS strict, ESLint, Prettier | TESTADO | `pnpm lint`, `format:check`, `typecheck` limpos |
+| Monorepo pnpm (apps/web, packages/domain), JS/JSX (D-017), ESLint, Prettier | TESTADO | `pnpm lint` e `format:check` limpos; reexecutado após converter de TS para JS |
 | Supabase local isolado (`zela-acesso-local`, 553xx) convivendo com o Zela Escola | TESTADO | 9 containers nossos + 11 do Zela Escola ativos; wrapper recusa alvo errado |
 | Schema: tenants, profiles, memberships, platform_admins, sites, role_permissions, audit_log | TESTADO | migration `20261006120000_foundation.sql` aplica do zero (`db reset`) |
 | RLS + RBAC (recurso:ação + escopo por site), hierarquia de papéis, último owner protegido, sem autoelevação | TESTADO | 84 testes pgTAP, com e sem seed |
@@ -20,6 +20,9 @@ Atualizado: 2026-10-06
 | Sem segredo/service_role no bundle | TESTADO | `scripts/check-bundle-secrets.mjs` |
 | Falsificação: policy permissiva injetada de propósito | VALIDADO | a suíte pgTAP falhou 8 testes; banco restaurado por reset |
 | CI (`.github/workflows/ci.yml`) | NÃO TESTADO | nunca executado (sem remote git); actions fixadas por tag major, não verificadas |
+
+## Mudança de stack (2026-10-06, pós-aprovação da Fase 1)
+Código convertido de TypeScript para JS/JSX (D-017). Reexecutado depois da conversão: lint, format:check, Vitest (19 + 8), build, check:bundle, rbac:drift (33) e E2E (10/10). pgTAP não foi reexecutado (banco inalterado). Risco novo: sem checagem estática de tipos. Edge Functions ainda não existem (Deno quando surgirem).
 
 ## Limites / pendências conhecidas
 - Sem fluxo de convite por e-mail nem CRUD de sites/membros na UI (Fase 2). Telas atuais são somente leitura.

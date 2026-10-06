@@ -6,7 +6,6 @@ import {
   canInAnyScope,
   canManageRole,
   roleHasPermission,
-  type MembershipView,
 } from './rbac';
 
 const T1 = 'tenant-1';
@@ -14,7 +13,8 @@ const T2 = 'tenant-2';
 const S1 = 'site-1';
 const S2 = 'site-2';
 
-const m = (over: Partial<MembershipView> = {}): MembershipView => ({
+/** @param {Partial<import('./rbac').MembershipView>} [over] */
+const m = (over = {}) => ({
   tenantId: T1,
   role: 'viewer',
   status: 'active',
@@ -33,7 +33,7 @@ describe('matriz de permissoes', () => {
   });
 
   it('somente owner/admin gerenciam membros', () => {
-    for (const p of ['member:invite', 'member:update_role', 'member:remove'] as const) {
+    for (const p of ['member:invite', 'member:update_role', 'member:remove']) {
       const roles = TENANT_ROLES.filter((r) => roleHasPermission(r, p));
       expect(roles).toEqual(['organization_owner', 'organization_admin']);
     }
@@ -91,9 +91,9 @@ describe('can()', () => {
 
   it('propriedade: escopo nunca concede permissao que o papel nao tem', () => {
     for (const role of TENANT_ROLES) {
-      for (const scope of [null, [S1]] as const) {
+      for (const scope of [null, [S1]]) {
         const list = [m({ role, scopeSiteIds: scope })];
-        for (const p of ['tenant:update', 'site:delete', 'member:remove'] as const) {
+        for (const p of ['tenant:update', 'site:delete', 'member:remove']) {
           if (!roleHasPermission(role, p)) expect(can(list, T1, p, S1)).toBe(false);
         }
       }
