@@ -79,3 +79,10 @@ Código convertido de TypeScript para JS/JSX (D-017). Reexecutado depois da conv
 ## Próximo
 Fase 2: sites, zonas, pessoas, grupos, credenciais, pontos de acesso, janelas de acesso e políticas (CRUD com RLS testada).
 - Regra permanente: Zela Escola (`Projeto_Zela`) protegido.
+
+## Backlog (fora do escopo do Painel do Desenvolvedor, concluido em 2026-10-06)
+- Separar config de producao do `config.toml` local (um `config push` com o arquivo atual repete valores de dev no Auth remoto).
+- Teste manual no staging: criar organizacao com senha e contratar plano.
+- Custo estimado dos modulos (hoje 0, sem margem na tela); precos e planos sao estimativas a ajustar em Planos.
+- Remover projeto Vercel duplicado `zela-acesso` e URLs antigas `paulo-santana1` do Auth, quando o dono aprovar.
+- Protecao de branch no GitHub; SMTP proprio; CRUD de Zonas/Pessoas/Grupos (Fase 2B-2D); MFA; aplicar limites contratados.
