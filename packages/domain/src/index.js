@@ -1,3 +1,7 @@
 export * from './rbac.js';
 export * from './modules.js';
 export * from './pricing.js';
+export * from './credentials.js';
+export * from './schedule.js';
+export * from './access-point.js';
+export * from './policy.js';

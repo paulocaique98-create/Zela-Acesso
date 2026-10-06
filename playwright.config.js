@@ -18,6 +18,7 @@ export default defineConfig({
   fullyParallel: false,
   workers: 2,
   globalSetup: './e2e/global-setup.js',
+  globalTeardown: './e2e/global-teardown.js',
   retries: 0,
   expect: { timeout: 10_000 },
   reporter: [['list']],

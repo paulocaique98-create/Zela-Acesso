@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   EMPTY_FORM,
+  applyCompany,
   buildDetails,
   buildLimits,
   createErrorMessage,
@@ -10,6 +11,41 @@ import {
 } from './tenantForm';
 
 const valid = { ...EMPTY_FORM, name: 'Org Ótima', owner_email: 'dono@example.test' };
+
+describe('validateForm - senha do responsavel', () => {
+  const withPw = (owner_password) => ({ ...valid, owner_name: 'Ana', owner_password });
+  it('exige minuscula, maiuscula e numero', () => {
+    expect(validateForm(withPw('abcdefgh'), true)).toMatch(/minúscula, maiúscula e número/);
+    expect(validateForm(withPw('Abcdefg1'), true)).toBeNull();
+  });
+});
+
+describe('applyCompany', () => {
+  const company = {
+    name: 'Fantasia',
+    legal_name: 'RAZAO LTDA',
+    contact_email: 'a@b.test',
+    postal_code: '70040912',
+    city: 'Brasília',
+    state: 'DF',
+    status: 'Ativa',
+  };
+
+  it('preenche so campos vazios, formata o CEP e ignora campos fora do formulario', () => {
+    const { form, filled } = applyCompany({ ...EMPTY_FORM, city: 'Digitada' }, company);
+    expect(form.legal_name).toBe('RAZAO LTDA');
+    expect(form.postal_code).toBe('70040-912');
+    expect(form.city).toBe('Digitada');
+    expect(form).not.toHaveProperty('status');
+    expect(filled).toBe(5);
+  });
+
+  it('resposta vazia nao altera nada', () => {
+    const { form, filled } = applyCompany(valid, {});
+    expect(form).toEqual(valid);
+    expect(filled).toBe(0);
+  });
+});
 
 describe('slugify', () => {
   it('normaliza nome em identificador', () => {
@@ -49,7 +85,7 @@ describe('validateForm', () => {
       /8/,
     );
     expect(
-      validateForm({ ...valid, owner_name: 'Ana', owner_password: 'senha-com-12+' }, true),
+      validateForm({ ...valid, owner_name: 'Ana', owner_password: 'Senha-com-12+' }, true),
     ).toBeNull();
   });
 });

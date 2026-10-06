@@ -264,7 +264,8 @@ select is((select count(*)::int from public.audit_log
   where resource_type = 'people' and metadata::text like '%MAT-1%'), 0,
   'audit_log nao contem external_ref');
 select is((select count(*)::int from public.audit_log
-  where action = 'access_group_members.insert'), 1, 'auditoria registra membro adicionado ao grupo');
+  where action = 'access_group_members.insert'
+    and tenant_id = '10000000-0000-0000-0000-00000000000a'), 1, 'auditoria registra membro adicionado ao grupo');
 select is((select count(*)::int from public.audit_log
   where action = 'zones.insert' and metadata ? 'site_id'
     and tenant_id = '10000000-0000-0000-0000-00000000000a'), 4,

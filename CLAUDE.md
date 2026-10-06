@@ -2,8 +2,10 @@
 
 Arx Tecnologia · SaaS multi-tenant de controle de acesso físico. Produto de produção, não protótipo.
 
+Este arquivo é só memória operacional e economia de tokens. O documento base do projeto é `PROMPT_MESTRE_ZELA_ACESSO_CLAUDE_CODE.md` (requisitos, regras, fases); em conflito de regra de produto, vale ele.
+
 ## Hierarquia
-1. Instrução atual do usuário. 2. Este arquivo. 3. `docs/ZELA_ACESSO_STATUS.md`. 4. Docs específicos. 5. `PROMPT_MESTRE_ZELA_ACESSO_CLAUDE_CODE.md` só quando a tarefa exigir (buscar a seção, não reler inteiro).
+1. Instrução atual do usuário. 2. `PROMPT_MESTRE_ZELA_ACESSO_CLAUDE_CODE.md` (documento base; buscar a seção com Grep, nunca reler inteiro). 3. `docs/ZELA_ACESSO_STATUS.md` (estado vivo). 4. Docs específicos (`docs/19-DECISIONS.md`, `07-REGULATORY-MATRIX.md`, etc.). 5. Este arquivo.
 
 ## Fluxo
 ENTENDER → LOCALIZAR → LER TRECHO → SEGURANÇA → PLANEJAR → EDITAR → TESTAR → STATUS. Não inventar estado; não declarar teste, conformidade ou segurança sem evidência.

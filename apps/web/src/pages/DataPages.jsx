@@ -21,7 +21,7 @@ export const roleLabel = (role) => ROLE_LABEL[role] ?? role;
 /**
  * @param {{ permission: import('@zela/domain').Permission, siteLevel?: boolean, children: import('react').ReactNode }} props
  */
-function Guard({ permission, siteLevel = false, children }) {
+export function Guard({ permission, siteLevel = false, children }) {
   const { allowed, allowedInAnyScope } = useWorkspace();
   if (!(siteLevel ? allowedInAnyScope(permission) : allowed(permission))) {
     return <p role="status">Você não tem permissão para ver esta página.</p>;
@@ -33,7 +33,7 @@ function Guard({ permission, siteLevel = false, children }) {
  * @template T
  * @param {{ q: import('../lib/useQuery').QueryState<T>, children: (d: T) => import('react').ReactNode }} props
  */
-function Status({ q, children }) {
+export function Status({ q, children }) {
   if (q.loading) return <p>Carregando…</p>;
   if (q.error || !q.data)
     return (

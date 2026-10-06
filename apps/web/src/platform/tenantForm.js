@@ -95,6 +95,38 @@ export function formFromTenant(tenant, details) {
   };
 }
 
+const COMPANY_KEYS = [
+  'name',
+  'legal_name',
+  'contact_email',
+  'contact_phone',
+  'postal_code',
+  'street',
+  'street_number',
+  'address_complement',
+  'district',
+  'city',
+  'state',
+];
+
+/**
+ * Preenche o formulario com os dados da consulta de CNPJ, sem sobrescrever o que o usuario ja digitou.
+ * @param {typeof EMPTY_FORM} form @param {Record<string, string>} company
+ * @returns {{ form: typeof EMPTY_FORM, filled: number }}
+ */
+export function applyCompany(form, company) {
+  const next = { ...form };
+  let filled = 0;
+  for (const k of COMPANY_KEYS) {
+    const value = k === 'postal_code' ? formatCep(company?.[k]) : (company?.[k] ?? '');
+    if (value && !String(next[k] ?? '').trim()) {
+      next[k] = value;
+      filled += 1;
+    }
+  }
+  return { form: next, filled };
+}
+
 /** Dados cadastrais enviados ao banco (o banco normaliza e valida de novo). */
 export function buildDetails(form) {
   return {
@@ -143,6 +175,13 @@ export function validateForm(form, creating) {
     if (!form.owner_name.trim()) return 'Informe o nome do responsável.';
     if (form.owner_password.length < MIN_OWNER_PASSWORD)
       return `A senha do responsável deve ter no mínimo ${MIN_OWNER_PASSWORD} caracteres.`;
+    // Mesma regra do Auth (password_requirements = lower_upper_letters_digits).
+    if (
+      !/[a-z]/.test(form.owner_password) ||
+      !/[A-Z]/.test(form.owner_password) ||
+      !/\d/.test(form.owner_password)
+    )
+      return 'A senha do responsável deve ter letra minúscula, maiúscula e número.';
   }
   return null;
 }

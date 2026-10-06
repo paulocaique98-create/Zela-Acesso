@@ -149,6 +149,14 @@ describe('create-tenant-owner', () => {
     expect(admin.auth.admin.deleteUser).not.toHaveBeenCalled();
   });
 
+  it('senha fraca para o Auth: 422 com a regra, sem organizacao', async () => {
+    const { deps, userClient } = setup({ createError: { code: 'weak_password', message: 'x' } });
+    const r = await call(deps, VALID);
+    expect(r.status).toBe(422);
+    expect((await r.json()).error).toMatch(/minúscula, maiúscula e número/);
+    expect(userClient.rpc).not.toHaveBeenCalled();
+  });
+
   it('e-mail ja usado: 409 sem expor detalhe e sem organizacao', async () => {
     const { deps, userClient } = setup({ createError: { message: 'User already registered' } });
     const r = await call(deps, VALID);

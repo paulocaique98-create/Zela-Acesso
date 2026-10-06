@@ -11,10 +11,11 @@ import {
   LayoutGrid,
   MoreVertical,
   Plus,
+  Search,
   X,
 } from 'lucide-react';
 import { describePackage } from '@zela/domain';
-import { formatCep, formatCnpj, generatePassword } from '../lib/br';
+import { formatCep, formatCnpj, generatePassword, isValidCnpj } from '../lib/br';
 import { supabase } from '../lib/supabase';
 import { toast } from '../lib/toast';
 import { useQuery } from '../lib/useQuery';
@@ -23,6 +24,7 @@ import { ContractPlanForTenant } from './ContractPlanModal';
 import {
   EMPTY_FORM,
   UFS,
+  applyCompany,
   buildDetails,
   buildLimits,
   createErrorMessage,
@@ -53,6 +55,16 @@ async function functionErrorMessage(error) {
   return 'Serviço de criação de contas indisponível neste ambiente. Tente novamente ou use o e-mail de uma conta existente.';
 }
 
+async function lookupErrorMessage(error) {
+  try {
+    const body = await error.context?.json?.();
+    if (body?.error) return body.error;
+  } catch {
+    /* corpo ilegivel */
+  }
+  return 'Consulta de CNPJ indisponível neste ambiente. Preencha manualmente.';
+}
+
 function TenantModal({ tenant, details, onClose, onSaved }) {
   const editing = !!tenant;
   const [form, setForm] = useState(() =>
@@ -61,8 +73,30 @@ function TenantModal({ tenant, details, onClose, onSaved }) {
   const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
+  const [looking, setLooking] = useState(false);
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
   const effectiveSlug = form.slugTouched ? form.slug : slugify(form.name);
+
+  // Preenche os campos vazios a partir do CNPJ (API aberta da CNPJa via Edge Function). Falha nunca bloqueia o cadastro manual.
+  async function lookupCnpj() {
+    setLooking(true);
+    const { data, error: err } = await supabase.functions.invoke('lookup-cnpj', {
+      body: { cnpj: form.tax_id },
+    });
+    setLooking(false);
+    if (err) return toast.error(await lookupErrorMessage(err));
+    const company = data?.company ?? {};
+    const { form: next, filled } = applyCompany(form, company);
+    setForm(next);
+    const inactive = company.status && company.status !== 'Ativa';
+    if (inactive) toast.error(`Situação cadastral na Receita: ${company.status}.`);
+    else
+      toast.success(
+        filled
+          ? `${filled} campo(s) preenchido(s) pelo CNPJ.`
+          : 'Nenhum campo vazio para preencher.',
+      );
+  }
 
   async function submit(e) {
     e.preventDefault();
@@ -156,15 +190,38 @@ function TenantModal({ tenant, details, onClose, onSaved }) {
 
         <form onSubmit={(e) => void submit(e)} className="space-y-4 overflow-y-auto p-5">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <div className="md:col-span-2">
+              <label htmlFor="t-cnpj" className={label}>
+                CNPJ
+              </label>
+              <div className="flex gap-2">
+                <input
+                  id="t-cnpj"
+                  className={field}
+                  value={form.tax_id}
+                  onChange={(e) => setForm((f) => ({ ...f, tax_id: formatCnpj(e.target.value) }))}
+                  inputMode="numeric"
+                  placeholder="00.000.000/0000-00"
+                />
+                <button
+                  type="button"
+                  className={`${btnNeutral} shrink-0`}
+                  disabled={looking || !isValidCnpj(form.tax_id)}
+                  onClick={() => void lookupCnpj()}
+                >
+                  <Search size={16} aria-hidden="true" />
+                  {looking ? 'Buscando…' : 'Buscar dados'}
+                </button>
+              </div>
+              <p className="mt-1 text-caption text-on-surface-variant">
+                Preenche os campos vazios com os dados públicos do CNPJ.
+              </p>
+            </div>
             {text('t-name', 'Nome fantasia', 'name', {
               input: { required: true, minLength: 2, maxLength: 120 },
             })}
             {text('t-legal', 'Razão social', 'legal_name', {
               input: { placeholder: 'Como está no CNPJ', maxLength: 200 },
-            })}
-            {text('t-cnpj', 'CNPJ', 'tax_id', {
-              onChange: (e) => setForm((f) => ({ ...f, tax_id: formatCnpj(e.target.value) })),
-              input: { inputMode: 'numeric', placeholder: '00.000.000/0000-00' },
             })}
             {text('t-im', 'Inscrição municipal', 'municipal_registration', {
               input: { maxLength: 40 },

@@ -107,7 +107,70 @@ test.describe('Organizacoes: cadastro, edicao e status', () => {
     await page.getByLabel('Nome do responsável').fill('Fulana');
     await page.getByLabel('Senha de acesso (opcional)').fill('curta');
     await page.getByRole('button', { name: 'Criar organização' }).click();
-    await expect(page.getByRole('alert')).toContainText('no mínimo 12');
+    await expect(page.getByRole('alert')).toContainText('no mínimo 8');
+  });
+
+  test('Buscar dados preenche so campos vazios a partir do CNPJ (funcao simulada)', async ({
+    page,
+  }) => {
+    // A CNPJa nunca e chamada de verdade nos testes: a Edge Function lookup-cnpj e simulada na rede.
+    let status = 200;
+    let sentCnpj = null;
+    await page.route('**/functions/v1/lookup-cnpj', async (route) => {
+      if (route.request().method() === 'OPTIONS')
+        return route.fulfill({
+          status: 204,
+          headers: { 'access-control-allow-origin': '*', 'access-control-allow-headers': '*' },
+        });
+      sentCnpj = route.request().postDataJSON().cnpj;
+      const body =
+        status === 200
+          ? {
+              company: {
+                legal_name: 'EMPRESA TESTE LTDA',
+                name: 'Empresa Teste',
+                contact_email: 'contato@empresa.test',
+                contact_phone: '(61) 3493-9002',
+                postal_code: '70040912',
+                street: 'Quadra 5',
+                street_number: 'SN',
+                address_complement: '',
+                district: 'Asa Norte',
+                city: 'Brasília',
+                state: 'DF',
+                status: 'Ativa',
+              },
+            }
+          : { error: 'Limite de consultas atingido. Aguarde um minuto e tente de novo.' };
+      return route.fulfill({
+        status,
+        contentType: 'application/json',
+        headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify(body),
+      });
+    });
+    await loginOk(page, OWNER);
+    await page.getByRole('button', { name: 'Cadastrar organização' }).click();
+    const buscar = page.getByRole('button', { name: 'Buscar dados' });
+    await page.getByLabel('CNPJ').fill('00000000000192');
+    await expect(buscar).toBeDisabled();
+    await page.getByLabel('CNPJ').fill('00000000000191');
+    await expect(buscar).toBeEnabled();
+
+    await page.getByLabel('Cidade').fill('Cidade Digitada');
+    status = 429;
+    await buscar.click();
+    await expect(page.getByText('Limite de consultas atingido')).toBeVisible();
+    await expect(page.getByLabel('Razão social')).toHaveValue('');
+
+    status = 200;
+    await buscar.click();
+    await expect(page.getByText(/campo\(s\) preenchido\(s\) pelo CNPJ/)).toBeVisible();
+    expect(sentCnpj).toBe('00.000.000/0001-91');
+    await expect(page.getByLabel('Razão social')).toHaveValue('EMPRESA TESTE LTDA');
+    await expect(page.getByLabel('Nome fantasia')).toHaveValue('Empresa Teste');
+    await expect(page.getByLabel('CEP')).toHaveValue('70040-912');
+    await expect(page.getByLabel('Cidade')).toHaveValue('Cidade Digitada');
   });
 
   test('com senha chama a Edge Function (simulada) sem vazar a senha na tela', async ({ page }) => {
@@ -138,7 +201,7 @@ test.describe('Organizacoes: cadastro, edicao e status', () => {
     await page.getByLabel('Nome fantasia').fill('Org Com Senha');
     await page.getByLabel('Nome do responsável').fill('Fulana de Tal');
     await page.getByLabel('E-mail de login').fill('novo.responsavel@example.test');
-    await page.getByLabel('Senha de acesso (opcional)').fill('senha-provisoria-123');
+    await page.getByLabel('Senha de acesso (opcional)').fill('Senha-provisoria-123');
     status = 409;
     await page.getByRole('button', { name: 'Criar organização' }).click();
     await expect(page.getByRole('alert')).toContainText(
@@ -152,9 +215,9 @@ test.describe('Organizacoes: cadastro, edicao e status', () => {
       slug: 'org-com-senha',
       owner_name: 'Fulana de Tal',
       owner_email: 'novo.responsavel@example.test',
-      password: 'senha-provisoria-123',
+      password: 'Senha-provisoria-123',
     });
-    await expect(page.getByText('senha-provisoria-123')).toHaveCount(0);
+    await expect(page.getByText('Senha-provisoria-123')).toHaveCount(0);
   });
 
   test('edita dados cadastrais e suspende/reativa', async ({ page }) => {
@@ -416,7 +479,7 @@ test.describe('Troca obrigatoria de senha no primeiro acesso', () => {
       await page.getByLabel('Nova senha', { exact: true }).fill('curta');
       await page.getByLabel('Confirmar nova senha').fill('curta');
       await page.getByRole('button', { name: 'Salvar nova senha' }).click();
-      await expect(page.getByRole('alert')).toContainText('pelo menos 12');
+      await expect(page.getByRole('alert')).toContainText('pelo menos 8');
       await page.getByLabel('Nova senha', { exact: true }).fill('Senha-Nova-Definitiva-1');
       await page.getByLabel('Confirmar nova senha').fill('Outra-Senha-Diferente-1');
       await page.getByRole('button', { name: 'Salvar nova senha' }).click();

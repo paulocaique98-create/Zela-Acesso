@@ -416,3 +416,6 @@ enabled = true
 
 [functions.create-tenant-owner]
 entrypoint = "./functions/create-tenant-owner/index.js"
+
+[functions.lookup-cnpj]
+entrypoint = "./functions/lookup-cnpj/index.js"

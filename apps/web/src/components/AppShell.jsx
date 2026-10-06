@@ -1,5 +1,20 @@
 import { Navigate, Outlet } from 'react-router-dom';
-import { Building2, Code2, LayoutDashboard, LifeBuoy, ScrollText, Users } from 'lucide-react';
+import {
+  Building2,
+  CalendarClock,
+  CalendarDays,
+  Code2,
+  DoorOpen,
+  Landmark,
+  Layers,
+  LayoutDashboard,
+  LifeBuoy,
+  ScrollText,
+  ShieldCheck,
+  UserRound,
+  Users,
+  UsersRound,
+} from 'lucide-react';
 import { BRAND } from '../brand';
 import { useAuth } from '../auth/AuthProvider';
 import { useWorkspace } from '../workspace/WorkspaceProvider';
@@ -12,6 +27,32 @@ import { ShellFrame } from './ShellFrame';
 const NAV = [
   { to: '/', label: 'Visão geral', icon: LayoutDashboard, permission: null },
   { to: '/sites', label: 'Locais', icon: Building2, permission: 'site:read', siteLevel: true },
+  {
+    to: '/predios',
+    label: 'Prédios e andares',
+    icon: Landmark,
+    permission: 'zone:read',
+    siteLevel: true,
+  },
+  { to: '/zonas', label: 'Zonas', icon: Layers, permission: 'zone:read', siteLevel: true },
+  {
+    to: '/pontos',
+    label: 'Pontos de acesso',
+    icon: DoorOpen,
+    permission: 'access_point:read',
+    siteLevel: true,
+  },
+  { to: '/pessoas', label: 'Pessoas', icon: UserRound, permission: 'person:read' },
+  { to: '/grupos', label: 'Grupos', icon: UsersRound, permission: 'group:read' },
+  {
+    to: '/politicas',
+    label: 'Políticas de acesso',
+    icon: ShieldCheck,
+    permission: 'policy:read',
+    siteLevel: true,
+  },
+  { to: '/janelas', label: 'Janelas de acesso', icon: CalendarClock, permission: 'schedule:read' },
+  { to: '/feriados', label: 'Feriados', icon: CalendarDays, permission: 'schedule:read' },
   { to: '/membros', label: 'Membros', icon: Users, permission: 'member:read' },
   { to: '/auditoria', label: 'Auditoria', icon: ScrollText, permission: 'audit:read' },
   { to: '/suporte', label: 'Suporte', icon: LifeBuoy, permission: 'support:read' },

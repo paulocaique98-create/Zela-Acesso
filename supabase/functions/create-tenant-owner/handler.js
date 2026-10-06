@@ -111,6 +111,12 @@ export async function handle(req, deps) {
   });
   if (createError || !created?.user) {
     const taken = /already|registered|exists/i.test(createError?.message ?? '');
+    if (createError?.code === 'weak_password')
+      return json(
+        422,
+        { error: 'A senha deve ter letra minúscula, maiúscula e número (mínimo 8 caracteres).' },
+        cors,
+      );
     return taken
       ? json(409, { error: 'Este e-mail já está em uso por outra conta.' }, cors)
       : json(500, { error: 'Não foi possível criar a conta do responsável.' }, cors);
