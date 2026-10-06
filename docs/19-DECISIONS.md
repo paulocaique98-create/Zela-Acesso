@@ -12,3 +12,4 @@
 | D-008 | Sem Redis/Kafka/K8s no MVP | Custo e simplicidade; Postgres + Edge Functions bastam | Proposta |
 | D-009 | Verificar se Node 24 é LTS vigente antes de fixar `engines` | Regra de verificar versões | Pendente |
 | D-010 | Git isolado na pasta do projeto, sem remote até decisão do dono | Evitar commits no repo Painel-SDR da home | Aplicada |
+| D-011 | Fase 0 aprovada pelo dono (2026-10-06); skills supabase, postgres-best-practices, playwright-skill e security-audit dispensadas. Usar docs oficiais e as skills instaladas (skill-security-scan, adversarial-verify, context-warden) | Sem origem verificável; sem instalar fonte não vetada | Aplicada |

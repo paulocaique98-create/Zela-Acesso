@@ -26,8 +26,10 @@ Data: 2026-10-06 · Status: parcial (descoberta de ambiente concluída; pesquisa
 
 ## Skills / plugins (Seção 0.1)
 - Marketplace `Zavelinski/claude-code-skills` adicionada (escopo user).
-- `skill-security-scan` **NÃO instalada**: falha de clone SSH (`No ED25519 host key is known for github.com`).
-- Demais plugins (adversarial-verify, context-warden, supabase, postgres-best-practices, playwright-skill, security-audit) **NÃO instalados** — dependem do scan prévio e do mesmo mecanismo de clone.
+- Bloqueio SSH (`No ED25519 host key is known for github.com`) resolvido em 2026-10-06 com `git config --global url."https://github.com/".insteadOf` (git@github.com: e ssh://git@github.com/).
+- Instalados em `--scope project` (`.claude/settings.json`): `skill-security-scan` 1.1.0, `adversarial-verify` 1.0.1, `context-warden` 0.1.0.
+- Revisão manual antes da instalação de adversarial-verify e context-warden (SKILL.md, hooks, plugin.json; sem rede, sem acesso a segredos, sem comandos perigosos): veredito ALLOW. O skill-security-scan foi lido manualmente (hook de 52 linhas, só `fs`), pois não pode vetar a si mesmo. Não é garantia de segurança em runtime. O commit instalado do context-warden (6c8ace0) difere do clonado (b3a99e2) só em README/NOTICE/.github.
+- **NÃO instalados**: `supabase`, `postgres-best-practices`, `playwright-skill`, `security-audit`. Não existem no marketplace `Zavelinski/claude-code-skills` (35 plugins verificados). A origem precisa ser definida; nada será instalado sem scan prévio.
 - Plugins pré-existentes: stitch-* (desabilitados), irrelevantes ao projeto.
 - Ação manual mínima: confirmar a chave de host do github.com (comparar fingerprint com https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/githubs-ssh-key-fingerprints) e adicioná-la ao `known_hosts`, ou configurar o git para usar HTTPS para github.com.
 

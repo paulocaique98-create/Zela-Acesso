@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+.vite/
+playwright-report/
+test-results/
+supabase/.temp/
+supabase/.branches/
+.claude/settings.local.json
+CLAUDE_ZELA_ACESSO.md
