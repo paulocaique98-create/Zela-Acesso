@@ -13,6 +13,7 @@ import { useAuth } from '../auth/AuthProvider';
  *   tenants: WorkspaceTenant[],
  *   memberships: MembershipView[],
  *   current: WorkspaceTenant | null,
+ *   platformRole: 'platform_owner' | 'platform_support' | null,
  *   selectTenant: (tenantId: string) => void,
  *   allowed: (permission: Permission, siteId?: string) => boolean,
  *   allowedInAnyScope: (permission: Permission) => boolean,
@@ -40,17 +41,22 @@ export function WorkspaceProvider({ children }) {
   const [error, setError] = useState(null);
   const [tenants, setTenants] = useState([]);
   const [memberships, setMemberships] = useState([]);
+  const [platformRole, setPlatformRole] = useState(null);
   const [currentId, setCurrentId] = useState(readStored());
 
   useEffect(() => {
     if (!userId) return;
     let active = true;
     void (async () => {
-      const { data, error: err } = await supabase
-        .from('memberships')
-        .select('tenant_id, role, status, scope_site_ids, tenants ( id, name, slug )')
-        .eq('user_id', userId);
+      const [{ data, error: err }, platform] = await Promise.all([
+        supabase
+          .from('memberships')
+          .select('tenant_id, role, status, scope_site_ids, tenants ( id, name, slug )')
+          .eq('user_id', userId),
+        supabase.from('platform_admins').select('role').eq('user_id', userId).maybeSingle(),
+      ]);
       if (!active) return;
+      setPlatformRole(platform.error ? null : (platform.data?.role ?? null));
       if (err) {
         setError('Não foi possível carregar seus espaços de trabalho.');
         setLoading(false);
@@ -97,13 +103,14 @@ export function WorkspaceProvider({ children }) {
       tenants,
       memberships,
       current,
+      platformRole: userId ? platformRole : null,
       selectTenant,
       allowed: (permission, siteId) =>
         current ? can(memberships, current.id, permission, siteId) : false,
       allowedInAnyScope: (permission) =>
         current ? canInAnyScope(memberships, current.id, permission) : false,
     }),
-    [userId, loading, error, tenants, memberships, current, selectTenant],
+    [userId, loading, error, tenants, memberships, current, platformRole, selectTenant],
   );
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
