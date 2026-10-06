@@ -28,6 +28,14 @@ Fatiada. **2A (zonas, pessoas, grupos, membros de grupo): banco IMPLEMENTADO e T
 - Decisão tomada sem o dono: pessoa é nível tenant (exige escopo tenant-inteiro); `kind` sem `visitor` (visitantes = Fase 5); delete de grupo só owner/admin.
 - Observação: `db:reset` falhou 1x por healthcheck do Storage (transitório; migrations aplicaram e containers ficaram saudáveis).
 
+## Infra e layout (2026-10-06)
+- Supabase remoto `hgdbtuhbcidtmxcnaxhv` (staging, sa-east-1): 2 migrations aplicadas (84 permissões, 30 policies, 0 tabelas sem RLS); banco vazio (sem usuários/tenants). pgTAP/drift NÃO rodados no remoto.
+- GitHub `paulocaique98-create/Zela-Acesso` (HTTPS; sem chave SSH). CI passou no push da 2A.
+- Vercel: projeto mantido `zela-acesso.` (Root `apps/web`, `apps/web/vercel.json`, prod https://zela-acesso-tawny.vercel.app). Variáveis `VITE_SUPABASE_*` nos 3 ambientes; integração Supabase da Vercel aponta ao projeto do Zela Acesso (verificado), mas injetou chaves de admin não usadas (remoção pendente de aval). Projeto duplicado `zela-acesso` (deploy em ERROR) ainda existe.
+- Layout do Zela (tema, Inter, lucide, sidebar retrátil, header, login) aplicado ao web. Referência: repo Zela-app (leitura apenas). Porta de dev do web: 55173.
+- E2E: 10/10 em 6 de 7 execuções após o layout; 1 falha intermitente (login preso em "Carregando" >5 s, 1ª execução com Vite frio). Antes do layout: 4/4. Mitigado com `optimizeDeps.include`; causa não confirmada.
+- PENDENTE: Auth no painel Supabase (signup público, SMTP, Site URL/Redirect URLs com a URL da Vercel e http://127.0.0.1:55173), bootstrap do primeiro platform_owner/tenant.
+
 ## Mudança de stack (2026-10-06, pós-aprovação da Fase 1)
 Código convertido de TypeScript para JS/JSX (D-017). Reexecutado depois da conversão: lint, format:check, Vitest (19 + 8), build, check:bundle, rbac:drift (33) e E2E (10/10). pgTAP não foi reexecutado (banco inalterado). Risco novo: sem checagem estática de tipos. Edge Functions ainda não existem (Deno quando surgirem).
 
