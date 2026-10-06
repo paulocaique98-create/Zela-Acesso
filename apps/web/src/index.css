@@ -1,42 +1,102 @@
 @import 'tailwindcss';
 
-:root {
-  --bg: #f6f7f9;
-  --surface: #ffffff;
-  --border: #d9dde3;
-  --text: #14181f;
-  --muted: #4b5563;
-  --accent: #1f4fd8;
-  --accent-text: #ffffff;
-  --danger: #b42318;
+/* Design system compartilhado com o Zela (tokens, tipografia, raios). Somente tema claro. */
+@theme {
+  --color-primary: #3525cd;
+  --color-primary-container: #4f46e5;
+  --color-on-primary: #ffffff;
+  --color-secondary: #4648d4;
+  --color-tertiary: #313ba4;
+
+  --color-surface: #f8f9ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #eff4ff;
+  --color-surface-container: #e5eeff;
+  --color-surface-container-high: #dce9ff;
+  --color-on-surface: #0b1c30;
+  --color-on-surface-variant: #464555;
+  --color-outline: #777587;
+  --color-outline-variant: #c7c4d8;
+
+  --color-success: #2e7d32;
+  --color-warning: #b45309;
+  --color-error: #ba1a1a;
+
+  --radius-zela-sm: 0.5rem;
+  --radius-zela-md: 0.75rem;
+  --radius-zela-lg: 1rem;
+  --radius-zela-xl: 1.5rem;
+
+  --font-sans: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --text-display: 48px;
+  --text-display--line-height: 1.2;
+  --text-display--font-weight: 700;
+  --text-h1: 32px;
+  --text-h1--line-height: 1.2;
+  --text-h1--font-weight: 700;
+  --text-h1-mobile: 24px;
+  --text-h1-mobile--line-height: 1.2;
+  --text-h1-mobile--font-weight: 700;
+  --text-h2: 24px;
+  --text-h2--line-height: 1.3;
+  --text-h2--font-weight: 600;
+  --text-h3: 20px;
+  --text-h3--line-height: 1.3;
+  --text-h3--font-weight: 600;
+  --text-label: 14px;
+  --text-label--line-height: 1.2;
+  --text-label--font-weight: 600;
+  --text-small: 14px;
+  --text-small--line-height: 1.5;
+  --text-caption: 12px;
+  --text-caption--line-height: 1.4;
+  --text-caption--font-weight: 500;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0e1116;
-    --surface: #161b22;
-    --border: #2b3340;
-    --text: #e6e9ef;
-    --muted: #a3acb9;
-    --accent: #6c93ff;
-    --accent-text: #0b1020;
-    --danger: #ff7b72;
-  }
+/* Aliases das variaveis antigas (paginas ainda nao migradas) apontam para os tokens novos. */
+:root {
+  --bg: var(--color-surface);
+  --surface: var(--color-surface-container-lowest);
+  --border: var(--color-outline-variant);
+  --text: var(--color-on-surface);
+  --muted: var(--color-on-surface-variant);
+  --accent: var(--color-primary);
+  --accent-text: var(--color-on-primary);
+  --danger: var(--color-error);
 }
 
 body {
   margin: 0;
-  background: var(--bg);
-  color: var(--text);
-  font-family:
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  background-color: var(--color-surface);
+  color: var(--color-on-surface);
+  font-family: var(--font-sans);
+}
+
+@media (max-width: 640px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
 }
 
 :focus-visible {
-  outline: 3px solid var(--accent);
+  outline: 3px solid var(--color-primary);
   outline-offset: 2px;
+}
+
+@keyframes gentlePulse {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+@utility animate-gentle-pulse {
+  animation: gentlePulse 1.8s ease-in-out infinite;
 }

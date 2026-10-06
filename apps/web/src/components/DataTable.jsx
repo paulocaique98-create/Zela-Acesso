@@ -3,16 +3,13 @@
  */
 export function DataTable({ caption, headers, rows, empty }) {
   return (
-    <div
-      className="overflow-x-auto rounded-lg border"
-      style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}
-    >
+    <div className="overflow-x-auto rounded-zela-lg border border-outline-variant bg-surface-container-lowest">
       <table className="w-full text-left text-sm">
-        <caption className="p-3 text-left text-base font-semibold">{caption}</caption>
+        <caption className="p-4 text-left text-h3 text-on-surface">{caption}</caption>
         <thead>
-          <tr style={{ color: 'var(--muted)' }}>
+          <tr className="bg-surface-container-low text-caption tracking-wide text-on-surface-variant uppercase">
             {headers.map((h) => (
-              <th key={h} scope="col" className="px-3 py-2 font-medium">
+              <th key={h} scope="col" className="px-4 py-2.5 font-bold">
                 {h}
               </th>
             ))}
@@ -21,15 +18,21 @@ export function DataTable({ caption, headers, rows, empty }) {
         <tbody>
           {rows.length === 0 ? (
             <tr>
-              <td colSpan={headers.length} className="px-3 py-4" style={{ color: 'var(--muted)' }}>
+              <td
+                colSpan={headers.length}
+                className="px-4 py-10 text-center text-on-surface-variant"
+              >
                 {empty}
               </td>
             </tr>
           ) : (
             rows.map((cells, i) => (
-              <tr key={i} className="border-t" style={{ borderColor: 'var(--border)' }}>
+              <tr
+                key={i}
+                className="border-t border-outline-variant/60 transition-colors hover:bg-surface-container-low/60"
+              >
                 {cells.map((c, j) => (
-                  <td key={j} className="px-3 py-2">
+                  <td key={j} className="px-4 py-3 text-on-surface">
                     {c}
                   </td>
                 ))}

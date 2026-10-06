@@ -6,5 +6,9 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: { host: '127.0.0.1', port: 55173, strictPort: true },
+  // Pre-otimiza no start: sem isso o Vite descobre lucide-react tarde e recarrega a pagina no meio do fluxo.
+  optimizeDeps: {
+    include: ['lucide-react', 'react-router-dom', '@supabase/supabase-js', 'react-dom/client'],
+  },
   preview: { host: '127.0.0.1', port: 55173, strictPort: true },
 });
