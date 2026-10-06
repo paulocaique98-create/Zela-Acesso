@@ -36,6 +36,8 @@ const USERS = [
   ['alfa.visualizador@example.test', 'Elisa Alfa (Visualizadora)'],
   ['alfa.sede@example.test', 'Fabio Alfa (Somente Sede)'],
   ['beta.dono@example.test', 'Gabi Beta (Proprietária)'],
+  // Sem organizacao: responsavel das organizacoes criadas pelos testes E2E do Painel do Desenvolvedor.
+  ['responsavel.teste@example.test', 'Hugo Teste (Responsável)'],
 ];
 
 async function ensureUser(email, displayName) {

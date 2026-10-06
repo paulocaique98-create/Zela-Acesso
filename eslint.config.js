@@ -29,6 +29,11 @@ export default [
     },
   },
   {
+    // Edge Functions rodam no Deno (global Deno).
+    files: ['supabase/functions/**/*.js'],
+    languageOptions: { globals: { Deno: 'readonly' } },
+  },
+  {
     files: ['scripts/**/*.mjs'],
     rules: { 'no-console': 'off' },
   },

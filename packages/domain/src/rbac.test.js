@@ -39,9 +39,18 @@ describe('matriz de permissoes', () => {
     }
   });
 
-  it('total de permissoes bate com o banco (84)', () => {
+  it('total de permissoes bate com o banco (88)', () => {
     const total = Object.values(ROLE_PERMISSIONS).reduce((n, list) => n + list.length, 0);
-    expect(total).toBe(84);
+    expect(total).toBe(88);
+  });
+
+  it('somente owner/admin usam o suporte da plataforma', () => {
+    for (const p of ['support:read', 'support:write']) {
+      expect(TENANT_ROLES.filter((r) => roleHasPermission(r, p))).toEqual([
+        'organization_owner',
+        'organization_admin',
+      ]);
+    }
   });
 
   it('nao ha permissoes duplicadas por role', () => {

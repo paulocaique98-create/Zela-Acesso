@@ -17,7 +17,7 @@ export const TENANT_ROLES = [
 export const PLATFORM_ROLES = ['platform_owner', 'platform_support'];
 /** @typedef {'platform_owner' | 'platform_support'} PlatformRole */
 
-/** @typedef {'tenant:update' | 'member:read' | 'member:invite' | 'member:update_role' | 'member:remove' | 'site:read' | 'site:create' | 'site:update' | 'site:delete' | 'audit:read' | 'zone:read' | 'zone:create' | 'zone:update' | 'zone:delete' | 'person:read' | 'person:create' | 'person:update' | 'person:delete' | 'group:read' | 'group:create' | 'group:update' | 'group:delete'} Permission */
+/** @typedef {'tenant:update' | 'member:read' | 'member:invite' | 'member:update_role' | 'member:remove' | 'site:read' | 'site:create' | 'site:update' | 'site:delete' | 'audit:read' | 'zone:read' | 'zone:create' | 'zone:update' | 'zone:delete' | 'person:read' | 'person:create' | 'person:update' | 'person:delete' | 'group:read' | 'group:create' | 'group:update' | 'group:delete' | 'support:read' | 'support:write'} Permission */
 
 /** @type {Readonly<Record<TenantRole, readonly Permission[]>>} */
 export const ROLE_PERMISSIONS = {
@@ -44,6 +44,8 @@ export const ROLE_PERMISSIONS = {
     'group:create',
     'group:update',
     'group:delete',
+    'support:read',
+    'support:write',
   ],
   organization_admin: [
     'member:read',
@@ -67,6 +69,8 @@ export const ROLE_PERMISSIONS = {
     'group:create',
     'group:update',
     'group:delete',
+    'support:read',
+    'support:write',
   ],
   security_manager: [
     'member:read',

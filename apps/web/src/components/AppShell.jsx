@@ -1,9 +1,10 @@
 import { Navigate, Outlet } from 'react-router-dom';
-import { Building2, Code2, LayoutDashboard, ScrollText, Users } from 'lucide-react';
+import { Building2, Code2, LayoutDashboard, LifeBuoy, ScrollText, Users } from 'lucide-react';
 import { BRAND } from '../brand';
 import { useAuth } from '../auth/AuthProvider';
 import { useWorkspace } from '../workspace/WorkspaceProvider';
 import { LoadingLogo } from './LoadingLogo';
+import { PasswordGate } from './PasswordGate';
 import { ShellFrame } from './ShellFrame';
 
 // siteLevel: recurso por site, visivel a quem tem a permissao em qualquer escopo (RLS filtra as linhas).
@@ -13,6 +14,7 @@ const NAV = [
   { to: '/sites', label: 'Locais', icon: Building2, permission: 'site:read', siteLevel: true },
   { to: '/membros', label: 'Membros', icon: Users, permission: 'member:read' },
   { to: '/auditoria', label: 'Auditoria', icon: ScrollText, permission: 'audit:read' },
+  { to: '/suporte', label: 'Suporte', icon: LifeBuoy, permission: 'support:read' },
 ];
 
 export function AppShell() {
@@ -55,17 +57,19 @@ export function AppShell() {
     ) : null;
 
   return (
-    <ShellFrame title={BRAND.productName} items={items} headerCenter={tenantPicker}>
-      {ws.error && (
-        <p role="alert" className="text-error">
-          {ws.error}
-        </p>
-      )}
-      {!ws.error && !ws.current ? (
-        <p>Você ainda não pertence a nenhuma organização. Peça um convite ao administrador.</p>
-      ) : (
-        <Outlet />
-      )}
-    </ShellFrame>
+    <PasswordGate>
+      <ShellFrame title={BRAND.productName} items={items} headerCenter={tenantPicker}>
+        {ws.error && (
+          <p role="alert" className="text-error">
+            {ws.error}
+          </p>
+        )}
+        {!ws.error && !ws.current ? (
+          <p>Você ainda não pertence a nenhuma organização. Peça um convite ao administrador.</p>
+        ) : (
+          <Outlet />
+        )}
+      </ShellFrame>
+    </PasswordGate>
   );
 }

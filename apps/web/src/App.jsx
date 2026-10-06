@@ -3,7 +3,15 @@ import { AuthProvider } from './auth/AuthProvider';
 import { AppShell } from './components/AppShell';
 import { AuditPage, MembersPage, OverviewPage, SitesPage } from './pages/DataPages';
 import { LoginPage } from './pages/LoginPage';
-import { DeveloperPanel } from './platform/DeveloperPanel';
+import { Toaster } from './components/Toaster';
+import { OrgSupportPage } from './pages/OrgSupportPage';
+import { BiometricsPage } from './platform/BiometricsPage';
+import { DeveloperPanel, OwnerOnly } from './platform/DeveloperPanel';
+import { ErrorLogsPage } from './platform/ErrorLogsPage';
+import { PlansPage } from './platform/PlansPage';
+import { SettingsPage } from './platform/SettingsPage';
+import { PlatformSupportPage } from './platform/SupportPage';
+import { TenantModulesPage } from './platform/TenantModulesPage';
 import { TenantsPage } from './platform/TenantsPage';
 import { WorkspaceProvider } from './workspace/WorkspaceProvider';
 
@@ -16,14 +24,29 @@ export function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="plataforma" element={<DeveloperPanel />}>
               <Route index element={<TenantsPage />} />
+              <Route path="organizacoes/:id/modulos" element={<TenantModulesPage />} />
+              <Route
+                path="planos"
+                element={
+                  <OwnerOnly>
+                    <PlansPage />
+                  </OwnerOnly>
+                }
+              />
+              <Route path="logs" element={<ErrorLogsPage />} />
+              <Route path="biometria" element={<BiometricsPage />} />
+              <Route path="suporte" element={<PlatformSupportPage />} />
+              <Route path="configuracoes" element={<SettingsPage />} />
             </Route>
             <Route element={<AppShell />}>
               <Route index element={<OverviewPage />} />
               <Route path="sites" element={<SitesPage />} />
               <Route path="membros" element={<MembersPage />} />
               <Route path="auditoria" element={<AuditPage />} />
+              <Route path="suporte" element={<OrgSupportPage />} />
             </Route>
           </Routes>
+          <Toaster />
         </WorkspaceProvider>
       </AuthProvider>
     </BrowserRouter>

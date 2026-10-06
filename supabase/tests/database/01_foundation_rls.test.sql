@@ -263,8 +263,8 @@ select is((select count(*)::int from public.audit_log where tenant_id <> '100000
 reset role;
 
 -- ---------------------------------------------------------------- RBAC: matriz minima
--- Fase 1: 33 permissoes; Fase 2A soma 51 (zone/person/group) = 84.
-select is((select count(*)::int from public.role_permissions), 84, 'matriz tem 84 permissoes (drift: atualizar domain/rbac.js)');
+-- Fase 1: 33 permissoes; Fase 2A soma 51 (zone/person/group) = 84; painel do Dev soma 4 (support) = 88.
+select is((select count(*)::int from public.role_permissions), 88, 'matriz tem 88 permissoes (drift: atualizar domain/rbac.js)');
 select is((select count(*)::int from public.role_permissions where role = 'viewer' and permission not in ('site:read', 'zone:read')),
   0, 'viewer so tem site:read e zone:read');
 

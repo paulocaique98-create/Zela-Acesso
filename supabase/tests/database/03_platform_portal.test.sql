@@ -1,4 +1,4 @@
--- Painel do Desenvolvedor: create_tenant_by_email e limites do platform_support. Dados sinteticos; reverte no final.
+-- Painel do Desenvolvedor: platform_create_tenant e limites do platform_support. Dados sinteticos; reverte no final.
 begin;
 create extension if not exists pgtap with schema extensions;
 select * from no_plan();
@@ -24,27 +24,27 @@ insert into public.platform_admins (user_id, role) values
 
 -- anon nao executa
 set local role anon;
-select throws_ok($$select public.create_tenant_by_email('X Org', 'x-org', 'novo-dono@example.test')$$,
-  '42501', null, 'anon nao executa create_tenant_by_email');
+select throws_ok($$select public.platform_create_tenant('X Org', 'x-org', null, 'novo-dono@example.test', null)$$,
+  '42501', null, 'anon nao executa platform_create_tenant');
 reset role;
 
 -- usuario comum e platform_support: negado
 select tests.login('00000000-0000-0000-0000-0000000000e2');
-select throws_ok($$select public.create_tenant_by_email('X Org', 'x-org', 'novo-dono@example.test')$$,
+select throws_ok($$select public.platform_create_tenant('X Org', 'x-org', null, 'novo-dono@example.test', null)$$,
   '42501', null, 'usuario comum nao cria organizacao');
 reset role;
 select tests.login('00000000-0000-0000-0000-0000000000c2');
-select throws_ok($$select public.create_tenant_by_email('X Org', 'x-org', 'novo-dono@example.test')$$,
+select throws_ok($$select public.platform_create_tenant('X Org', 'x-org', null, 'novo-dono@example.test', null)$$,
   '42501', null, 'platform_support nao cria organizacao');
 reset role;
 
 -- platform_owner: cria, e-mail case-insensitive, dono vira organization_owner
 select tests.login('00000000-0000-0000-0000-0000000000c1');
-select lives_ok($$select public.create_tenant_by_email('Org Nova', 'org-nova', ' Novo-Dono@Example.test ')$$,
-  'platform_owner cria organizacao pelo e-mail do dono');
-select throws_ok($$select public.create_tenant_by_email('Org Fantasma', 'org-fantasma', 'ninguem@example.test')$$,
+select lives_ok($$select public.platform_create_tenant('Org Nova', 'org-nova', null, ' Novo-Dono@Example.test ', null)$$,
+  'platform_owner cria organizacao pelo e-mail do dono (RPC platform_create_tenant)');
+select throws_ok($$select public.platform_create_tenant('Org Fantasma', 'org-fantasma', null, 'ninguem@example.test', null)$$,
   '23503', null, 'e-mail inexistente: rejeitado');
-select throws_ok($$select public.create_tenant_by_email('Org Nova 2', 'org-nova', 'novo-dono@example.test')$$,
+select throws_ok($$select public.platform_create_tenant('Org Nova 2', 'org-nova', null, 'novo-dono@example.test', null)$$,
   '23505', null, 'slug duplicado: rejeitado');
 select is((select count(*)::int from public.tenants where slug = 'org-fantasma'), 0,
   'falha nao deixa organizacao parcial');

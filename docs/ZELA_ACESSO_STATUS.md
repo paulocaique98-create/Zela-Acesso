@@ -36,12 +36,23 @@ Fatiada. **2A (zonas, pessoas, grupos, membros de grupo): banco IMPLEMENTADO e T
 - E2E: 10/10 em 6 de 7 execuções após o layout; 1 falha intermitente (login preso em "Carregando" >5 s, 1ª execução com Vite frio). Antes do layout: 4/4. Mitigado com `optimizeDeps.include`; causa não confirmada.
 - PENDENTE: Auth no painel Supabase (signup público, SMTP, Site URL/Redirect URLs com a URL da Vercel e http://127.0.0.1:55173), bootstrap do primeiro platform_owner/tenant.
 
+## Painel do Desenvolvedor (2026-10-06) — paridade com o portal do Dev do Zela Escola
+Referência (leitura apenas): Zela-app `DeveloperLayout/Panel/Modulos/Planos/PlanosContratacao/ChatSupport/ErrorLogs/QualidadeBiometria` + `ConfiguracoesPanel`. Tema CLARO (decisão do dono); menus: Gestão de Organizações, Planos, Faturamento (em breve), Logs, Biometria, Suporte, Configurações.
+- **IMPLEMENTADO e TESTADO local** — migrations `20261008120000_platform_portal.sql` e `20261009120000_platform_dev_panel.sql`: `org_code` ZA###, `features_enabled`/`limits`, `tenant_details` (CNPJ, endereço, notas internas só da plataforma), histórico de módulos por trigger, catálogo de preços/planos/ciclos/contratações com recálculo no servidor (`platform_contract_plan`), `my_plan`, suporte (threads/mensagens com Realtime e limite de envio), `error_logs` + `log_error` (dedupe, sem chaves sensíveis, URL sem query), `system_settings` (logo/imagem de login, só imagem PNG/JPG/WebP ou https), `user_security_flags` (troca de senha obrigatória). RBAC 84 → 88 (`support:read/write` para owner/admin).
+- **Testes executados**: pgTAP 4 suítes / 276 asserts PASS; Vitest domínio 62 + web 23; lint/format/build/check:bundle limpos; `rbac:drift` 88 idênticas; E2E 28/28 na última execução (1ª execução anterior teve 1 falha de login preso em "Carregando", intermitente já conhecida).
+- **Edge Function `create-tenant-owner`** (cria conta + organização; troca de senha obrigatória no 1º login): lógica TESTADA com clientes simulados (21 casos). **NÃO TESTADA de ponta a ponta** (edge-runtime desligado no Supabase local) e **NÃO publicada**. O E2E dessa rota usa rede simulada.
+- Diferenças deliberadas em relação ao Escola: sem "Excluir" definitivo (só suspender/reativar; decisão do dono); sem "Explicar com IA" nos logs (envia logs a terceiro e exige segredo; decisão pendente); sem busca de CEP externa; senha do responsável ≥ 12 caracteres e gerador de senha; mensagens do banco nunca exibidas cruas.
+- **Dados comerciais são placeholders**: todos os preços do catálogo nascem 0 e não há planos; a Arx define a tabela no menu Planos. O catálogo de módulos (`packages/domain/src/modules.js`) é PROPOSTA minha (base, controle de pontos, horários/políticas, visitantes, relatórios, agente local, biometria) e precisa de validação do dono. Limites contratados são só registro (não aplicados automaticamente). Módulos marcados "em construção" não têm tela que dependa da chave.
+- Biometria (menu): só mostra quantas organizações ligaram a chave; o módulo não existe ainda. Faturamento: desabilitado ("Em breve").
+- Local: `[auth.rate_limit] sign_in_sign_ups = 300` no `config.toml` (só local) para a suíte E2E. Usuário `responsavel.teste@example.test` no seed (dono das organizações criadas pelos testes).
+- **PENDENTE no remoto (staging)**: aplicar migrations 3 e 4 (`db push`, depende de autorização), publicar a função e definir `ALLOWED_ORIGINS`, e só então publicar o front (senão o painel em produção consulta colunas inexistentes). Criar o `platform_owner` local após `db:reset`: `node scripts/create-platform-admin.mjs` (senha por variável de ambiente).
+
 ## Mudança de stack (2026-10-06, pós-aprovação da Fase 1)
 Código convertido de TypeScript para JS/JSX (D-017). Reexecutado depois da conversão: lint, format:check, Vitest (19 + 8), build, check:bundle, rbac:drift (33) e E2E (10/10). pgTAP não foi reexecutado (banco inalterado). Risco novo: sem checagem estática de tipos. Edge Functions ainda não existem (Deno quando surgirem).
 
 ## Limites / pendências conhecidas
 - Sem fluxo de convite por e-mail nem CRUD de sites/membros na UI (Fase 2). Telas atuais são somente leitura.
-- MFA ainda não exigido (D-016). Rate limit de login do Auth local = 30/5 min (pode afetar E2E em execuções repetidas).
+- MFA ainda não exigido (D-016). Rate limit de login do Auth local subido para 300/5 min (só local) por causa do E2E; o remoto mantém o padrão.
 - Hash encadeado dos eventos: Fase 3 (audit_log atual é append-only por trigger; superusuário do banco pode desabilitar triggers).
 - Uma falha intermitente de E2E ocorreu 1x na primeira execução (causa não confirmada: Vite frio ou rate limit); 4 execuções seguintes limpas. Um `pnpm build` falhou 1x sem causa identificada e passou ao repetir.
 - Desempenho da checagem `has_permission` por linha: NÃO medido.

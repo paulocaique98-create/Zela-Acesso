@@ -14,8 +14,12 @@ try {
 // Executa contra localhost (127.0.0.1:55173) + Supabase local do Zela Acesso (127.0.0.1:55321).
 export default defineConfig({
   testDir: './e2e',
-  fullyParallel: true,
+  // Testes de um arquivo rodam em sequencia (compartilham estado: logo global, conversas); arquivos em paralelo.
+  fullyParallel: false,
+  workers: 2,
+  globalSetup: './e2e/global-setup.js',
   retries: 0,
+  expect: { timeout: 10_000 },
   reporter: [['list']],
   use: { baseURL: 'http://127.0.0.1:55173', trace: 'retain-on-failure' },
   projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],

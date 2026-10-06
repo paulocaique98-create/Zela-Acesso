@@ -47,6 +47,8 @@ export function WorkspaceProvider({ children }) {
   useEffect(() => {
     if (!userId) return;
     let active = true;
+    // Novo login na mesma pagina: sem isso o estado de carregamento do usuario anterior (false) vazaria.
+    setLoading(true);
     void (async () => {
       const [{ data, error: err }, platform] = await Promise.all([
         supabase

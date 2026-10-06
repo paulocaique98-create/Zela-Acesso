@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { LogOut, Menu, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../auth/AuthProvider';
+import { useBranding } from '../hooks/useBranding';
 import { useSidebarExpanded } from '../hooks/useSidebarExpanded';
 import { SidebarItem, SidebarToggleButton } from './SidebarNav';
 
@@ -9,7 +10,7 @@ import { SidebarItem, SidebarToggleButton } from './SidebarNav';
  * @param {{
  *   title: string,
  *   subtitle?: string,
- *   items: { to: string, label: string, icon: import('react').ElementType, end?: boolean }[],
+ *   items: { to: string, label: string, icon: import('react').ElementType, end?: boolean, badge?: number, disabled?: boolean }[],
  *   headerCenter?: import('react').ReactNode,
  *   children: import('react').ReactNode,
  * }} props
@@ -18,6 +19,7 @@ export function ShellFrame({ title, subtitle, items, headerCenter, children }) {
   const { signOut } = useAuth();
   const [isExpanded, toggleExpanded] = useSidebarExpanded();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const { logo } = useBranding();
 
   return (
     <div className="min-h-screen bg-surface">
@@ -35,9 +37,13 @@ export function ShellFrame({ title, subtitle, items, headerCenter, children }) {
           <div
             className={`hidden shrink-0 items-center transition-[margin] duration-300 md:flex ${isExpanded ? 'md:ml-0.5' : 'md:-ml-2.5'}`}
           >
-            <div className="flex h-9 w-9 items-center justify-center rounded-zela-md bg-primary">
-              <ShieldCheck className="h-5 w-5 text-white" aria-hidden="true" />
-            </div>
+            {logo ? (
+              <img src={logo} alt="" className="h-9 w-9 rounded-zela-md object-contain" />
+            ) : (
+              <div className="flex h-9 w-9 items-center justify-center rounded-zela-md bg-primary">
+                <ShieldCheck className="h-5 w-5 text-white" aria-hidden="true" />
+              </div>
+            )}
           </div>
           <h1 className="flex min-w-0 items-center gap-1.5 text-lg leading-none font-bold tracking-tight whitespace-nowrap text-on-surface">
             {title}
@@ -75,12 +81,14 @@ export function ShellFrame({ title, subtitle, items, headerCenter, children }) {
           >
             <ul className="flex flex-col gap-1">
               {items.map((n) => (
-                <li key={n.to}>
+                <li key={n.to + n.label}>
                   <SidebarItem
                     to={n.to}
                     end={n.end}
                     icon={n.icon}
                     label={n.label}
+                    badge={n.badge}
+                    disabled={n.disabled}
                     onNavigate={() => setMobileOpen(false)}
                   />
                 </li>

@@ -4,6 +4,7 @@ import { ArrowRight, Eye, EyeOff, Lock, Mail, Quote, ShieldCheck } from 'lucide-
 import { BRAND } from '../brand';
 import { useAuth } from '../auth/AuthProvider';
 import { LoadingLogo } from '../components/LoadingLogo';
+import { useBranding } from '../hooks/useBranding';
 
 const INPUT =
   'w-full rounded-zela-md border border-outline-variant/60 bg-surface-container-lowest py-3.5 pl-11 text-on-surface shadow-sm outline-none transition-all placeholder:text-on-surface-variant/40 hover:border-outline focus:border-primary focus:ring-4 focus:ring-primary/10';
@@ -15,6 +16,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState(null);
   const [busy, setBusy] = useState(false);
+  const { loginImage } = useBranding();
 
   if (loading) return <LoadingLogo />;
   if (session) return <Navigate to="/" replace />;
@@ -48,7 +50,16 @@ export function LoginPage() {
 
         <div className="relative z-10 my-6 flex min-h-0 flex-1 items-center justify-center">
           <div className="relative flex aspect-square h-full max-h-[42vh] w-full max-w-lg items-center justify-center overflow-hidden rounded-[32px] bg-gradient-to-br from-primary via-secondary to-tertiary shadow-2xl">
-            <ShieldCheck className="text-white/15" size={140} strokeWidth={1} aria-hidden="true" />
+            {loginImage ? (
+              <img src={loginImage} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <ShieldCheck
+                className="text-white/15"
+                size={140}
+                strokeWidth={1}
+                aria-hidden="true"
+              />
+            )}
           </div>
         </div>
 
