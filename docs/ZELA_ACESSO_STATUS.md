@@ -31,6 +31,12 @@ Código convertido de TypeScript para JS/JSX (D-017). Reexecutado depois da conv
 - Uma falha intermitente de E2E ocorreu 1x na primeira execução (causa não confirmada: Vite frio ou rate limit); 4 execuções seguintes limpas. Um `pnpm build` falhou 1x sem causa identificada e passou ao repetir.
 - Desempenho da checagem `has_permission` por linha: NÃO medido.
 - Lacunas regulatórias herdadas da Fase 0 (Lei 14.967, Guia ANPD Biometria, NR-23) seguem abertas; não bloqueiam a Fase 2.
+- Sem `tsc` (D-017): sem checagem estática de tipos; compensar com testes, RLS e `rbac:drift`. Avaliar `// @ts-check` ou lint de JSDoc só se o dono pedir.
+- E2E exige `PLAYWRIGHT_BROWSERS_PATH=./.playwright-browsers` (senão procura o Chromium na pasta global e falha). Documentar no README/LOCAL_ENV.
+- Servidor Vite com cache antigo quebra a página após mudar `main` de pacote: reiniciar o `pnpm dev`.
+- Estrutura: monorepo mantido (apps/web, packages/domain). Dono pode pedir estrutura achatada (raiz única) como no Zela Escola.
+- pgTAP não reexecutado após a conversão para JS (banco inalterado).
+- Push bloqueado: sem remote git (pendente de decisão do dono).
 - Segurança: checkpoint formal (Security Audit/Adversarial Verify via skills) ainda não rodado; feita revisão manual adversarial da migration (ver D-012).
 
 - Fase 2 (antes ou junto): MFA obrigatório para admins/owners deve ser decidido antes do piloto (D-016).
