@@ -13,3 +13,8 @@
 | D-009 | Verificar se Node 24 é LTS vigente antes de fixar `engines` | Regra de verificar versões | Pendente |
 | D-010 | Git isolado na pasta do projeto, sem remote até decisão do dono | Evitar commits no repo Painel-SDR da home | Aplicada |
 | D-011 | Fase 0 aprovada pelo dono (2026-10-06); skills supabase, postgres-best-practices, playwright-skill e security-audit dispensadas. Usar docs oficiais e as skills instaladas (skill-security-scan, adversarial-verify, context-warden) | Sem origem verificável; sem instalar fonte não vetada | Aplicada |
+| D-012 | Privilégios por coluna além da RLS (ex.: `sites` sem UPDATE em `tenant_id`; `memberships` sem INSERT em `created_by`) | RLS filtra linhas, não colunas; evita mover dados entre tenants | Aplicada (testada em pgTAP) |
+| D-013 | TypeScript fixado em 6.0.x (não 7.x) | typescript-eslint 8.71 exige TS `<6.1.0`; revisar quando suportar 7 | Aplicada |
+| D-014 | Autorização via consulta ao banco (`has_permission`), sem papéis/tenant em claims do JWT | Evita claims desatualizadas após revogação; custo: 1 consulta indexada por checagem (a medir) | Aplicada |
+| D-015 | Cadastro público desligado; usuários entram por convite/seed. Provedor de e-mail segue ativo | `[auth.email].enable_signup=false` desliga o LOGIN por e-mail (descoberto em teste) | Aplicada |
+| D-016 | MFA TOTP habilitado no Auth, mas NÃO exigido (AAL2) em RLS nesta fase | RNF-04 exige MFA para admins em produção: fica PENDENTE para a Fase 9/antes do piloto | Pendente |

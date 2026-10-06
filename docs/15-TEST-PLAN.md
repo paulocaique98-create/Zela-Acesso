@@ -1,6 +1,6 @@
 # 15 — Plano de Testes
 
-Nada abaixo foi executado ainda (projeto sem código). Status: PLANEJADO.
+Fase 1 executada (ver ZELA_ACESSO_STATUS): pgTAP 84, Vitest 27, E2E 10. Demais camadas: PLANEJADO.
 
 | Camada | Ferramenta | Cobertura mínima |
 |---|---|---|

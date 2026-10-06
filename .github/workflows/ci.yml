@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: lint, typecheck, unit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm format:check
+      - run: pnpm typecheck
+      - run: pnpm test
+
+  database-and-e2e:
+    name: RLS (pgTAP), drift RBAC, build, E2E
+    runs-on: ubuntu-latest
+    needs: quality
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+      - run: pnpm install --frozen-lockfile
+      - name: Supabase local (project_id zela-acesso-local, portas 553xx)
+        run: node scripts/supabase-local.mjs start
+      - name: Migrations limpas + testes de RLS
+        run: |
+          node scripts/supabase-local.mjs reset
+          node scripts/supabase-local.mjs test
+      - name: Seed sintetico e drift RBAC
+        run: |
+          node scripts/seed-dev.mjs
+          node scripts/check-rbac-drift.mjs
+      - name: Env publico, build e varredura de segredos no bundle
+        run: |
+          node scripts/write-web-env.mjs
+          pnpm build
+          node scripts/check-bundle-secrets.mjs
+      - name: E2E (Playwright)
+        run: |
+          pnpm exec playwright install --with-deps chromium
+          pnpm exec playwright test
+      - name: Encerrar Supabase local
+        if: always()
+        run: node scripts/supabase-local.mjs stop

@@ -217,7 +217,7 @@ select throws_ok(
 
 -- ---------------------------------------------------------------- plataforma
 select tests.login('00000000-0000-0000-0000-0000000000c2'); -- platform_support
-select is((select count(*)::int from public.tenants), 2, 'platform_support lista tenants');
+select is((select count(*)::int from public.tenants where slug in ('alfa', 'beta')), 2, 'platform_support lista tenants (independe do seed)');
 select is((select count(*)::int from public.sites), 0, 'platform_support nao le dados de site');
 select is((select count(*)::int from public.audit_log), 0, 'platform_support nao le auditoria do tenant');
 with u as (update public.tenants set name = 'Hack' where slug = 'beta' returning 1)
@@ -266,6 +266,42 @@ reset role;
 select is((select count(*)::int from public.role_permissions), 33, 'matriz tem 33 permissoes (drift: atualizar domain/rbac.ts)');
 select is((select count(*)::int from public.role_permissions where role = 'viewer' and permission <> 'site:read'),
   0, 'viewer so tem site:read');
+
+-- ---------------------------------------------------------------- privilegios por coluna (ataques de movimentacao/forja)
+-- a1 e dono do A e tambem administrador do B (fixture): cenario classico de "mover" dados entre tenants.
+insert into public.memberships (tenant_id, user_id, role)
+  values ('10000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-0000000000a1', 'organization_admin');
+-- tenant B foi suspenso mais acima; reativa so para este bloco
+update public.tenants set status = 'active' where slug = 'beta';
+
+select tests.login('00000000-0000-0000-0000-0000000000a1');
+select throws_ok(
+  $$update public.sites set tenant_id = '10000000-0000-0000-0000-00000000000b'
+    where id = '20000000-0000-0000-0000-0000000000a1'$$,
+  '42501', null, 'nao move site entre tenants (tenant_id sem privilegio de UPDATE)');
+select throws_ok(
+  $$insert into public.memberships (tenant_id, user_id, role, created_by)
+    values ('10000000-0000-0000-0000-00000000000a', '00000000-0000-0000-0000-0000000000d1', 'viewer',
+            '00000000-0000-0000-0000-0000000000b1')$$,
+  '42501', null, 'nao forja created_by');
+select throws_ok(
+  $$update public.profiles set user_id = '00000000-0000-0000-0000-0000000000b1'
+    where user_id = '00000000-0000-0000-0000-0000000000a1'$$,
+  '42501', null, 'nao altera user_id do perfil');
+select lives_ok(
+  $$update public.profiles set display_name = 'Nome Novo' where user_id = '00000000-0000-0000-0000-0000000000a1'$$,
+  'altera o proprio display_name');
+select throws_ok(
+  $$update public.sites set id = gen_random_uuid() where id = '20000000-0000-0000-0000-0000000000a1'$$,
+  '42501', null, 'nao altera id do site');
+reset role;
+
+-- helpers internos nao sao acessiveis a anon
+set local role anon;
+select throws_ok(
+  $$select app_private.has_permission('10000000-0000-0000-0000-00000000000a', 'site:read', null)$$,
+  '42501', null, 'anon nao executa helpers de app_private');
+reset role;
 
 select * from finish();
 rollback;

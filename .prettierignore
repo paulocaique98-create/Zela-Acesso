@@ -6,3 +6,8 @@ supabase/.temp
 .claude
 CLAUDE_ZELA_ACESSO.md
 docs
+.playwright-browsers
+test-results
+playwright-report
+CLAUDE.md
+**/database.types.ts

@@ -14,3 +14,4 @@ supabase/.temp/
 supabase/.branches/
 .claude/settings.local.json
 CLAUDE_ZELA_ACESSO.md
+.playwright-browsers/

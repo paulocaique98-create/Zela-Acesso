@@ -42,5 +42,9 @@ if (cmd === 'reset' || cmd === 'stop') {
   console.log(`Alvo confirmado: containers *_${EXPECTED}. Zela Escola nao sera tocado.`);
 }
 
-const r = spawnSync('supabase', args, { cwd: root, stdio: 'inherit', shell: process.platform === 'win32' });
+const r = spawnSync('supabase', args, {
+  cwd: root,
+  stdio: 'inherit',
+  shell: process.platform === 'win32',
+});
 process.exit(r.status ?? 1);

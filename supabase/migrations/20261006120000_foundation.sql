@@ -392,13 +392,26 @@ alter table public.audit_log enable row level security;
 
 -- Privilegios de tabela (RLS filtra as linhas). anon nao recebe nada.
 revoke all on all tables in schema public from anon, authenticated;
-grant select, update on public.tenants to authenticated;
-grant select, update on public.profiles to authenticated;
+-- Privilegios por COLUNA: RLS filtra linhas, nao colunas. Sem isso um usuario com permissao em dois
+-- tenants moveria linhas entre eles (UPDATE ... SET tenant_id) ou forjaria created_by/ids.
+grant select on public.tenants to authenticated;
+grant update (name, status) on public.tenants to authenticated;
+grant select on public.profiles to authenticated;
+grant update (display_name) on public.profiles to authenticated;
 grant select on public.platform_admins to authenticated;
-grant select, insert, update, delete on public.sites to authenticated;
-grant select, insert, update, delete on public.memberships to authenticated;
+grant select, delete on public.sites to authenticated;
+grant insert (tenant_id, name, timezone) on public.sites to authenticated;
+grant update (name, timezone) on public.sites to authenticated;
+grant select, delete on public.memberships to authenticated;
+grant insert (tenant_id, user_id, role, scope_site_ids, status) on public.memberships to authenticated;
+grant update (role, status, scope_site_ids) on public.memberships to authenticated;
 grant select on public.role_permissions to authenticated;
 grant select on public.audit_log to authenticated;
+
+-- service_role (uso exclusivo server-side: Edge Functions/scripts) precisa de DML explicito.
+-- audit_log segue protegido por trigger (append-only) mesmo para service_role.
+grant select, insert, update, delete on all tables in schema public to service_role;
+alter default privileges in schema public grant select, insert, update, delete on tables to service_role;
 
 -- tenants
 create policy tenants_select on public.tenants for select to authenticated
