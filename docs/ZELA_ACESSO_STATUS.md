@@ -30,8 +30,16 @@ Atualizado: 2026-10-06
 - Lacunas regulatórias herdadas da Fase 0 (Lei 14.967, Guia ANPD Biometria, NR-23) seguem abertas; não bloqueiam a Fase 2.
 - Segurança: checkpoint formal (Security Audit/Adversarial Verify via skills) ainda não rodado; feita revisão manual adversarial da migration (ver D-012).
 
+- Fase 2 (antes ou junto): MFA obrigatório para admins/owners deve ser decidido antes do piloto (D-016).
+- Docs da Fase 0 ainda não criados: 00, 05, 06, 08–13, 16–18, CONTRIBUTING, SECURITY.md.
+- Skills de agentes (skill-security-scan, adversarial-verify, context-warden) só aparecem em nova sessão do Claude Code.
+- CI: ao existir remote git, executar o workflow, verificar as actions e registrar o resultado.
+
 ## Decisões do dono ainda abertas
-D-005 (Edge em Node+SQLite), D-009 (Node 24 LTS), remote git do projeto, aprovação da Fase 1.
+- Aprovação da Fase 1 (pré-requisito para iniciar a Fase 2).
+- D-005 (Edge em Node+SQLite).
+- D-009 (Node 24 como LTS).
+- Remote git do projeto (habilita rodar o CI).
 
 ## Próximo
 Fase 2: sites, zonas, pessoas, grupos, credenciais, pontos de acesso, horários e políticas (CRUD com RLS testada).
