@@ -263,9 +263,10 @@ select is((select count(*)::int from public.audit_log where tenant_id <> '100000
 reset role;
 
 -- ---------------------------------------------------------------- RBAC: matriz minima
-select is((select count(*)::int from public.role_permissions), 33, 'matriz tem 33 permissoes (drift: atualizar domain/rbac.ts)');
-select is((select count(*)::int from public.role_permissions where role = 'viewer' and permission <> 'site:read'),
-  0, 'viewer so tem site:read');
+-- Fase 1: 33 permissoes; Fase 2A soma 51 (zone/person/group) = 84.
+select is((select count(*)::int from public.role_permissions), 84, 'matriz tem 84 permissoes (drift: atualizar domain/rbac.js)');
+select is((select count(*)::int from public.role_permissions where role = 'viewer' and permission not in ('site:read', 'zone:read')),
+  0, 'viewer so tem site:read e zone:read');
 
 -- ---------------------------------------------------------------- privilegios por coluna (ataques de movimentacao/forja)
 -- a1 e dono do A e tambem administrador do B (fixture): cenario classico de "mover" dados entre tenants.

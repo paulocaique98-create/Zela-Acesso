@@ -17,7 +17,7 @@ export const TENANT_ROLES = [
 export const PLATFORM_ROLES = ['platform_owner', 'platform_support'];
 /** @typedef {'platform_owner' | 'platform_support'} PlatformRole */
 
-/** @typedef {'tenant:update' | 'member:read' | 'member:invite' | 'member:update_role' | 'member:remove' | 'site:read' | 'site:create' | 'site:update' | 'site:delete' | 'audit:read'} Permission */
+/** @typedef {'tenant:update' | 'member:read' | 'member:invite' | 'member:update_role' | 'member:remove' | 'site:read' | 'site:create' | 'site:update' | 'site:delete' | 'audit:read' | 'zone:read' | 'zone:create' | 'zone:update' | 'zone:delete' | 'person:read' | 'person:create' | 'person:update' | 'person:delete' | 'group:read' | 'group:create' | 'group:update' | 'group:delete'} Permission */
 
 /** @type {Readonly<Record<TenantRole, readonly Permission[]>>} */
 export const ROLE_PERMISSIONS = {
@@ -32,6 +32,18 @@ export const ROLE_PERMISSIONS = {
     'site:update',
     'site:delete',
     'audit:read',
+    'zone:read',
+    'zone:create',
+    'zone:update',
+    'zone:delete',
+    'person:read',
+    'person:create',
+    'person:update',
+    'person:delete',
+    'group:read',
+    'group:create',
+    'group:update',
+    'group:delete',
   ],
   organization_admin: [
     'member:read',
@@ -43,13 +55,56 @@ export const ROLE_PERMISSIONS = {
     'site:update',
     'site:delete',
     'audit:read',
+    'zone:read',
+    'zone:create',
+    'zone:update',
+    'zone:delete',
+    'person:read',
+    'person:create',
+    'person:update',
+    'person:delete',
+    'group:read',
+    'group:create',
+    'group:update',
+    'group:delete',
   ],
-  security_manager: ['member:read', 'site:read', 'site:create', 'site:update', 'audit:read'],
-  receptionist: ['site:read'],
-  hr_manager: ['member:read', 'site:read'],
-  auditor: ['member:read', 'site:read', 'audit:read'],
-  installer: ['site:read', 'site:update'],
-  viewer: ['site:read'],
+  security_manager: [
+    'member:read',
+    'site:read',
+    'site:create',
+    'site:update',
+    'audit:read',
+    'zone:read',
+    'zone:create',
+    'zone:update',
+    'person:read',
+    'person:create',
+    'person:update',
+    'group:read',
+    'group:create',
+    'group:update',
+  ],
+  receptionist: [
+    'site:read',
+    'zone:read',
+    'person:read',
+    'person:create',
+    'person:update',
+    'group:read',
+  ],
+  hr_manager: [
+    'member:read',
+    'site:read',
+    'zone:read',
+    'person:read',
+    'person:create',
+    'person:update',
+    'person:delete',
+    'group:read',
+  ],
+  auditor: ['member:read', 'site:read', 'audit:read', 'zone:read', 'person:read', 'group:read'],
+  installer: ['site:read', 'site:update', 'zone:read', 'zone:create', 'zone:update'],
+  viewer: ['site:read', 'zone:read'],
 };
 
 /** Hierarquia: quem tem rank menor nao atribui nem altera papel de rank igual ou maior (exceto owner). */

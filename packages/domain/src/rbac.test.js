@@ -39,9 +39,9 @@ describe('matriz de permissoes', () => {
     }
   });
 
-  it('total de permissoes bate com o banco (33)', () => {
+  it('total de permissoes bate com o banco (84)', () => {
     const total = Object.values(ROLE_PERMISSIONS).reduce((n, list) => n + list.length, 0);
-    expect(total).toBe(33);
+    expect(total).toBe(84);
   });
 
   it('nao ha permissoes duplicadas por role', () => {
@@ -139,5 +139,24 @@ describe('canManageRole()', () => {
     for (const a of others) {
       for (const t of TENANT_ROLES) expect(canManageRole(a, t)).toBe(false);
     }
+  });
+});
+
+describe('Fase 2A: zonas, pessoas, grupos', () => {
+  it('zonas respeitam escopo por site; pessoas e grupos exigem tenant inteiro', () => {
+    const scoped = [m({ role: 'security_manager', scopeSiteIds: ['s1'] })];
+    expect(can(scoped, T1, 'zone:create', 's1')).toBe(true);
+    expect(can(scoped, T1, 'zone:create', 's2')).toBe(false);
+    expect(can(scoped, T1, 'person:read')).toBe(false);
+    expect(can(scoped, T1, 'group:read')).toBe(false);
+  });
+
+  it('viewer so le zonas; installer nao ve pessoas; auditor so le', () => {
+    expect(roleHasPermission('viewer', 'zone:read')).toBe(true);
+    expect(roleHasPermission('viewer', 'person:read')).toBe(false);
+    expect(roleHasPermission('installer', 'person:read')).toBe(false);
+    expect(roleHasPermission('auditor', 'person:update')).toBe(false);
+    expect(roleHasPermission('receptionist', 'person:delete')).toBe(false);
+    expect(roleHasPermission('hr_manager', 'person:delete')).toBe(true);
   });
 });

@@ -21,6 +21,13 @@ Atualizado: 2026-10-06
 | Falsificação: policy permissiva injetada de propósito | VALIDADO | a suíte pgTAP falhou 8 testes; banco restaurado por reset |
 | CI (`.github/workflows/ci.yml`) | NÃO TESTADO | nunca executado (sem remote git); actions fixadas por tag major, não verificadas |
 
+## Fase 2 — em andamento (iniciada em 2026-10-06)
+Fatiada. **2A (zonas, pessoas, grupos, membros de grupo): banco IMPLEMENTADO e TESTADO** — migration `20261007120000_phase2a_zones_people_groups.sql`; pgTAP 145/145 (84 da Fase 1 + 61 novos: cross-tenant, FK composta, escopo por site, matriz por papel, privilégios por coluna, auditoria sem nome/external_ref); Vitest 21+8; lint/format limpos; `rbac:drift` 84 permissões idênticas. Matriz RBAC 33 → 84.
+- **2A PENDENTE**: telas/CRUD na UI (Zonas, Pessoas, Grupos) e E2E; E2E e build não reexecutados nesta fatia.
+- **2B–2D PENDENTE**: credenciais (hash, nunca texto puro), pontos de acesso, horários/feriados, políticas.
+- Decisão tomada sem o dono: pessoa é nível tenant (exige escopo tenant-inteiro); `kind` sem `visitor` (visitantes = Fase 5); delete de grupo só owner/admin.
+- Observação: `db:reset` falhou 1x por healthcheck do Storage (transitório; migrations aplicaram e containers ficaram saudáveis).
+
 ## Mudança de stack (2026-10-06, pós-aprovação da Fase 1)
 Código convertido de TypeScript para JS/JSX (D-017). Reexecutado depois da conversão: lint, format:check, Vitest (19 + 8), build, check:bundle, rbac:drift (33) e E2E (10/10). pgTAP não foi reexecutado (banco inalterado). Risco novo: sem checagem estática de tipos. Edge Functions ainda não existem (Deno quando surgirem).
 
