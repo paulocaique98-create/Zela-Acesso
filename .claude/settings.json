@@ -1,0 +1,7 @@
+{
+  "enabledPlugins": {
+    "skill-security-scan@claude-code-skills": true,
+    "adversarial-verify@claude-code-skills": true,
+    "context-warden@claude-code-skills": true
+  }
+}
