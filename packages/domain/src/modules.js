@@ -59,13 +59,13 @@ export const MODULES = [
   {
     id: 'schedules_policies',
     group: 'module',
-    name: 'Horários, feriados e políticas',
+    name: 'Janelas de acesso, feriados e políticas',
     summary: 'Quando e quem pode passar, decidido por regras determinísticas.',
     keys: ['schedules', 'holidays', 'policies'],
     building: true,
     includes: [
       {
-        name: 'Horários e feriados',
+        name: 'Janelas de acesso e feriados',
         desc: 'Janelas de acesso por grupo, com calendário de feriados',
       },
       {
@@ -74,7 +74,10 @@ export const MODULES = [
       },
     ],
     where: [
-      { portal: 'Painel da organização', menus: 'Horários · Feriados · Políticas (Fases 2C e 2D)' },
+      {
+        portal: 'Painel da organização',
+        menus: 'Janelas de acesso · Feriados · Políticas (Fases 2C e 2D)',
+      },
     ],
     onDisable: 'As regras deixam de ser editáveis. As já criadas ficam guardadas.',
   },
