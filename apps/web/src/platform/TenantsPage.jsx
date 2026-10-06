@@ -293,7 +293,7 @@ function TenantModal({ tenant, details, onClose, onSaved }) {
                         type={showPassword ? 'text' : 'password'}
                         autoComplete="new-password"
                         className={`${field} pr-9`}
-                        placeholder="Mínimo 12 caracteres"
+                        placeholder="Mínimo 8 caracteres"
                         value={form.owner_password}
                         onChange={set('owner_password')}
                       />

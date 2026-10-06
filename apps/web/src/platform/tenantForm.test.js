@@ -41,12 +41,12 @@ describe('validateForm', () => {
     expect(validateForm({ ...valid, owner_email: '' }, false)).toBeNull();
   });
 
-  it('com senha: exige nome e no minimo 12 caracteres', () => {
+  it('com senha: exige nome e no minimo 8 caracteres', () => {
     expect(validateForm({ ...valid, owner_password: 'curta-demais' }, true)).toMatch(
       /Informe o nome/,
     );
     expect(validateForm({ ...valid, owner_name: 'Ana', owner_password: 'curta' }, true)).toMatch(
-      /12/,
+      /8/,
     );
     expect(
       validateForm({ ...valid, owner_name: 'Ana', owner_password: 'senha-com-12+' }, true),

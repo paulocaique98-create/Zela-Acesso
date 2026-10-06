@@ -18,8 +18,8 @@ if (!['platform_owner', 'platform_support'].includes(role)) {
   console.error('PLATFORM_ROLE deve ser platform_owner ou platform_support.');
   process.exit(2);
 }
-if (password.length < 12) {
-  console.error('Use uma senha de pelo menos 12 caracteres.');
+if (password.length < 8) {
+  console.error('Use uma senha de pelo menos 8 caracteres.');
   process.exit(2);
 }
 

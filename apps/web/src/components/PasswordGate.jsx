@@ -4,7 +4,7 @@ import { useAuth } from '../auth/AuthProvider';
 import { supabase } from '../lib/supabase';
 import { LoadingLogo } from './LoadingLogo';
 
-export const MIN_NEW_PASSWORD = 12;
+export const MIN_NEW_PASSWORD = 8;
 
 /**
  * Troca obrigatoria de senha no primeiro acesso (conta criada pela plataforma com senha escolhida por outra

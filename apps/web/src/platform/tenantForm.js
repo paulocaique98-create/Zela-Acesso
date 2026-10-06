@@ -2,7 +2,7 @@
 import { formatCep, formatCnpj, isValidCnpj, onlyDigits } from '../lib/br';
 
 export const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,62}$/;
-export const MIN_OWNER_PASSWORD = 12;
+export const MIN_OWNER_PASSWORD = 8;
 export const UFS = [
   'AC',
   'AL',

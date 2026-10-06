@@ -5,7 +5,7 @@
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]{1,62}$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-export const MIN_PASSWORD = 12;
+export const MIN_PASSWORD = 8;
 const DETAIL_KEYS = [
   'legal_name',
   'tax_id',
