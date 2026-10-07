@@ -100,10 +100,10 @@ Código convertido de TypeScript para JS/JSX (D-017). Reexecutado depois da conv
 
 - **Vertical slice no Edge (Mock) IMPLEMENTADO e TESTADO local (07/10/2026)** — `apps/edge-agent/src/access.js` (`handleAccessAttempt`): decide, grava evento+presença, aciona o HAL só em decisão de abertura; Vitest edge-agent 70 PASS, lint ok. Limites: falha do driver não vai à nuvem nem reverte a presença; sem E2E com banco/Edge Function.
 
-- **Fase 6C-E2E (tela de Operação) TESTADO local (07/10/2026)** — `e2e/operations.spec.js` (alerta semeado pelo admin local → reconhecer → incidente → resolver → investigar/encerrar → isolamento Beta): 1 PASS. Corrigido `scripts/purge-tenants-dev.mjs` (tentava apagar da view `zone_occupancy`). **PENDENTE 6C**: tempo-real/notificações (a tela só recarrega após ação).
+- **Fase 6C-E2E (tela de Operação) TESTADO local (07/10/2026)** — `e2e/operations.spec.js` (alerta semeado pelo admin local → reconhecer → incidente → resolver → investigar/encerrar → isolamento Beta): 1 PASS. Corrigido `scripts/purge-tenants-dev.mjs` (tentava apagar da view `zone_occupancy`). **Tempo-real 6C IMPLEMENTADO e TESTADO local (07/10/2026)**: migration `20261024120000_phase6c_realtime.sql` (alerts/incidents na publicação `supabase_realtime`; Realtime respeita a RLS), `OperationsPage` assina por tenant, recarrega e avisa por toast em alerta novo; E2E cobre inserção com a tela aberta. **Fase 6C: CONCLUÍDA.** Limites: notificação só com a tela de Operação aberta (sem badge global, e-mail ou push); teste usa espera fixa de 3 s pela assinatura.
 
 ## Próximo
-Tempo-real/notificações da Operação (6C restante); Fase 7 (biometria, desligada por padrão) ou Fase 8 (hardware real); emissor/chave de comando e 4E. Antes: decisão do dono.
+Notificação global (badge/push) da Operação, se o dono quiser; Fase 7 (biometria, desligada por padrão) ou Fase 8 (hardware real); emissor/chave de comando e 4E. Antes: decisão do dono.
 - Regra permanente: Zela Escola (`Projeto_Zela`) protegido.
 
 ## Backlog (fora do escopo do Painel do Desenvolvedor, concluido em 2026-10-06)

@@ -34,6 +34,12 @@ test.describe('operacao: alertas e incidentes (Fase 6C, UI)', () => {
       .order('name')
       .limit(1)
       .single();
+    await loginOk(page, 'alfa.dono@example.test');
+    await page.getByRole('link', { name: 'Operação' }).click();
+    await expect(page.getByRole('heading', { name: 'Alertas' })).toBeVisible();
+
+    await page.waitForTimeout(3000); // sem indicador na UI: espera o canal Realtime assinar
+    // Tempo-real: o alerta semeado com a tela aberta aparece sem recarregar e avisa por toast
     const now = new Date().toISOString();
     const { data: seeded, error } = await admin
       .from('alerts')
@@ -51,9 +57,7 @@ test.describe('operacao: alertas e incidentes (Fase 6C, UI)', () => {
     expect(error).toBeNull();
     alertId = seeded?.id ?? '';
     expect(alertId).not.toBe('');
-
-    await loginOk(page, 'alfa.dono@example.test');
-    await page.getByRole('link', { name: 'Operação' }).click();
+    await expect(page.getByText('Novo alerta: Porta forçada.')).toBeVisible({ timeout: 15000 });
     const alerts = page.getByRole('table', { name: 'Alertas' });
     const row = alerts.getByRole('row', { name: /Porta forçada/ }).first();
     await expect(row.getByRole('cell', { name: 'Aberto' })).toBeVisible();

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DataTable } from '../components/DataTable';
 import { safeMessage } from '../lib/errors';
 import { supabase } from '../lib/supabase';
@@ -183,6 +183,27 @@ export function OperationsPage() {
       occupancy: o.error ? null : o.data,
       agents: g.error ? [] : g.data,
       points: ap.error ? [] : ap.data,
+    };
+  }, [tenantId]);
+
+  // Tempo-real: o Realtime aplica a RLS; qualquer mudanca recarrega e alerta novo avisa por toast.
+  const reload = q.reload;
+  useEffect(() => {
+    if (!tenantId) return undefined;
+    const filter = `tenant_id=eq.${tenantId}`;
+    const channel = supabase
+      .channel(`operations-${tenantId}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'alerts', filter }, (p) => {
+        if (p.eventType === 'INSERT' && KIND_LABEL[p.new?.kind])
+          toast.error(`Novo alerta: ${KIND_LABEL[p.new.kind]}.`);
+        reload();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'incidents', filter }, () =>
+        reload(),
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
     };
   }, [tenantId]);
 
