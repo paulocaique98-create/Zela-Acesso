@@ -86,6 +86,17 @@ export function evaluateAccess(ctx) {
       if (!ctx.visit.allowedZoneIds.includes(ctx.accessPoint.zoneId)) {
         return out('DENY', 'VISITOR_ZONE_NOT_ALLOWED');
       }
+      // Janela da visita: o estado pode estar defasado (Edge offline), então o horário também é checado aqui.
+      const from = ctx.visit.validFrom == null ? null : new Date(ctx.visit.validFrom).getTime();
+      const until = ctx.visit.validUntil == null ? null : new Date(ctx.visit.validUntil).getTime();
+      if (
+        Number.isNaN(from) ||
+        Number.isNaN(until) ||
+        (from != null && now.getTime() < from) ||
+        (until != null && now.getTime() >= until)
+      ) {
+        return out('DENY', 'VISITOR_EXPIRED');
+      }
     }
 
     // 6. Políticas + janelas (padrão é negar; janela desconhecida nega).
@@ -97,17 +108,24 @@ export function evaluateAccess(ctx) {
         ? evaluateSchedule(s.schedule, now, ctx.timezone, s.holidayDates ?? []).allowed
         : false;
     };
-    const pol = evaluatePolicies({
-      policies: ctx.policies ?? [],
-      groupIds: ctx.groupIds ?? [],
-      zoneId: ctx.accessPoint.zoneId,
-      accessPointId: ctx.accessPoint.id,
-      scheduleAllows,
-    });
+    // Visita ativa, na janela e com a zona liberada é a própria concessão (visitante não tem grupo/política).
+    const pol = ctx.visit
+      ? {
+          decision: /** @type {const} */ ('ALLOW'),
+          reason: /** @type {const} */ ('POLICY_MATCH'),
+          policyId: null,
+        }
+      : evaluatePolicies({
+          policies: ctx.policies ?? [],
+          groupIds: ctx.groupIds ?? [],
+          zoneId: ctx.accessPoint.zoneId,
+          accessPointId: ctx.accessPoint.id,
+          scheduleAllows,
+        });
     ev.policyId = pol.policyId;
     const matched = (ctx.policies ?? []).find((p) => p.id === pol.policyId);
     ev.scheduleId = matched?.scheduleId ?? lastScheduleId;
-    steps.push(`policy:${pol.decision}:${pol.reason}`);
+    steps.push(ctx.visit ? 'visit:allowed' : `policy:${pol.decision}:${pol.reason}`);
 
     /** @type {AccessDecision['decision']} */
     let decision = pol.decision;

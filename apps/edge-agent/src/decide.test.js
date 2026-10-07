@@ -10,8 +10,10 @@ import {
   IDS,
   MONDAY_10H,
   MONDAY_20H,
+  VISITOR_TOKEN,
   makeSnapshot,
 } from './fixtures.js';
+import { createHash } from 'node:crypto';
 
 let store;
 let n;
@@ -265,5 +267,57 @@ describe('relógio do host', () => {
     store.setMeta('clock_drift_s', '900');
     const r = attempt(anaPin, { offline: true, config: { enforceClock: false } });
     expect(r.decision.decision).toBe('DEGRADED_ALLOW');
+  });
+});
+
+describe('visitante (5C)', () => {
+  const visitorSnapshot = (visit) => {
+    const snap = makeSnapshot();
+    snap.people.push({ id: IDS.visitor, status: 'active' });
+    snap.credentials.push({
+      id: IDS.visitorToken,
+      personId: IDS.visitor,
+      type: 'mobile_token',
+      status: 'active',
+      secretHash: createHash('sha256').update(VISITOR_TOKEN).digest('hex'),
+      identifierHash: null,
+      expiresAt: '2026-10-05T18:00:00Z',
+    });
+    if (visit) snap.visits = [{ id: IDS.visit, personId: IDS.visitor, ...visit }];
+    return snap;
+  };
+  const apply = (visit) =>
+    applySnapshot(store, { hash: 'hv', snapshot: visitorSnapshot(visit) }, MONDAY_10H);
+  const token = { type: 'mobile_token', token: VISITOR_TOKEN };
+  const window = {
+    validFrom: '2026-10-05T12:00:00Z',
+    validUntil: '2026-10-05T18:00:00Z',
+    zoneIds: [IDS.zone],
+  };
+
+  it('visita com check-in, na janela e na zona libera sem grupo nem política', () => {
+    apply(window);
+    const r = attempt(token);
+    expect(r.decision).toMatchObject({ decision: 'ALLOW', reasonCode: 'POLICY_MATCH' });
+    expect(r.decision.evidence.steps).toContain('visit:allowed');
+    expect(r.open).toBe(true);
+  });
+  it('zona fora do escopo da visita nega', () => {
+    apply({ ...window, zoneIds: [IDS.otherZone] });
+    expect(attempt(token).decision).toMatchObject({ reasonCode: 'VISITOR_ZONE_NOT_ALLOWED' });
+  });
+  it('depois do fim da janela nega, mesmo com o cache defasado', () => {
+    apply(window);
+    const r = attempt(token, { now: new Date('2026-10-05T18:00:01Z') });
+    expect(r.open).toBe(false);
+  });
+  it('sem visita no cache, o visitante cai na política e nega', () => {
+    apply(null);
+    const r = attempt(token);
+    expect(r.open).toBe(false);
+    expect(r.decision.reasonCode).toBe('ZONE_NOT_ALLOWED');
+  });
+  it('snapshot antigo (sem visits) continua válido', () => {
+    expect(() => apply(undefined)).not.toThrow();
   });
 });

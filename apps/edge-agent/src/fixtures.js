@@ -20,12 +20,17 @@ export const IDS = {
   anaCard: 'a0000000-0000-0000-0000-0000000000a2',
   bobPin: 'a0000000-0000-0000-0000-0000000000a3',
   anaToken: 'a0000000-0000-0000-0000-0000000000a4',
+  visitor: '90000000-0000-0000-0000-0000000000a9',
+  visitorToken: 'a0000000-0000-0000-0000-0000000000a9',
+  visit: 'b0000000-0000-0000-0000-0000000000a9',
+  otherZone: '30000000-0000-0000-0000-0000000000a2',
 };
 
 export const ANA_PIN = '482913';
 export const ANA_CARD = 'ab12cd34';
 export const ANA_TOKEN = 'token-sintetico-de-alta-entropia';
 export const BOB_PIN = '739104';
+export const VISITOR_TOKEN = 'token-do-visitante-de-alta-entropia';
 
 /** Segunda-feira 10:00 em America/Manaus (UTC-4), dentro da janela 08–18. */
 export const MONDAY_10H = new Date('2026-10-05T14:00:00Z');

@@ -23,6 +23,7 @@ export function validateSnapshot(s) {
   for (const k of ['tenantId', 'siteId', 'timezone'])
     if (typeof s[k] !== 'string' || !s[k]) fail(`${k} ausente`);
   for (const k of ARRAYS) if (!Array.isArray(s[k])) fail(`${k} ausente`);
+  if (s.visits !== undefined && !Array.isArray(s.visits)) fail('visits malformado'); // ausente = snapshot antigo
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: s.timezone });
   } catch {
@@ -69,8 +70,10 @@ export function buildIndex(snapshot) {
   }
   const pinByPerson = new Map();
   for (const c of snapshot.credentials) if (c.type === 'pin') pinByPerson.set(c.personId, c);
+  const visitByPerson = new Map((snapshot.visits ?? []).map((v) => [v.personId, v]));
   return {
     snapshot,
+    visitByPerson,
     zones: new Map(snapshot.zones.map((z) => [z.id, z])),
     points: new Map(snapshot.accessPoints.map((p) => [p.id, p])),
     people: new Map(snapshot.people.map((p) => [p.id, p])),

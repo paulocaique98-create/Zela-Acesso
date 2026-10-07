@@ -45,7 +45,8 @@ export const ACCESS_REASON_CODES = [
  *   emergencyActive?: boolean,
  *   offline?: boolean,                              // true = decisão tomada sem a nuvem (Edge)
  *   antiPassback?: { mode: 'off' | 'soft' | 'hard', violated: boolean },
- *   visit?: { state: 'active' | 'expired' | 'revoked', allowedZoneIds: readonly string[] } | null,
+ *   visit?: { state: 'active' | 'expired' | 'revoked', allowedZoneIds: readonly string[],
+ *             validFrom?: Date | string | null, validUntil?: Date | string | null } | null,
  *   challengeSatisfied?: boolean,
  * }} AccessContext
  */

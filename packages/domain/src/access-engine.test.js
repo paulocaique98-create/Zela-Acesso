@@ -185,10 +185,41 @@ describe('evaluateAccess', () => {
         evaluateAccess(ctx({ visit: { state: 'active', allowedZoneIds: ['z9'] } })),
       ).toMatchObject({ reasonCode: 'VISITOR_ZONE_NOT_ALLOWED' });
     });
-    it('visita ativa na zona permitida segue para as políticas', () => {
-      expect(
-        evaluateAccess(ctx({ visit: { state: 'active', allowedZoneIds: ['z1'] } })).decision,
-      ).toBe('ALLOW');
+    const visitOnly = (visit, over = {}) =>
+      evaluateAccess(ctx({ groupIds: [], policies: [], visit, ...over }));
+    it('visita ativa na zona liberada é a própria concessão (sem grupo/política)', () => {
+      const d = visitOnly({ state: 'active', allowedZoneIds: ['z1'] });
+      expect(d).toMatchObject({ decision: 'ALLOW', reasonCode: 'POLICY_MATCH', policyId: null });
+      expect(d.evidence.steps).toContain('visit:allowed');
+    });
+    it('sem visita e sem política continua negando', () => {
+      expect(evaluateAccess(ctx({ groupIds: [], policies: [] })).decision).toBe('DENY');
+    });
+    it('janela da visita: antes do início e a partir do fim nega (VISITOR_EXPIRED)', () => {
+      const v = (validFrom, validUntil) => ({
+        state: 'active',
+        allowedZoneIds: ['z1'],
+        validFrom,
+        validUntil,
+      });
+      const t = NOW.getTime();
+      const iso = (ms) => new Date(t + ms).toISOString();
+      expect(visitOnly(v(iso(3_600_000), iso(7_200_000)))).toMatchObject({
+        reasonCode: 'VISITOR_EXPIRED',
+      });
+      expect(visitOnly(v(iso(-7_200_000), iso(0)))).toMatchObject({
+        reasonCode: 'VISITOR_EXPIRED',
+      });
+      expect(visitOnly(v('lixo', iso(3_600_000)))).toMatchObject({ reasonCode: 'VISITOR_EXPIRED' });
+      expect(visitOnly(v(iso(-3_600_000), iso(3_600_000))).decision).toBe('ALLOW');
+    });
+    it('visitante respeita anti-passback e modo offline', () => {
+      const visit = { state: 'active', allowedZoneIds: ['z1'] };
+      expect(visitOnly(visit, { antiPassback: { mode: 'hard', violated: true } })).toMatchObject({
+        decision: 'DENY',
+        reasonCode: 'ANTI_PASSBACK',
+      });
+      expect(visitOnly(visit, { offline: true })).toMatchObject({ decision: 'DEGRADED_DENY' });
     });
   });
 

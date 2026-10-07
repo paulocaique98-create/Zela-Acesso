@@ -119,6 +119,9 @@ export function processAccessAttempt(input) {
       });
     }
 
+    // Visitante: a visita (janela + zonas) vem do cache; sem visita no cache a pessoa visitante cai na política (nega).
+    const visit = person ? (index.visitByPerson.get(person.id) ?? null) : null;
+
     const decision = evaluateAccess({
       now,
       timezone: snap?.timezone ?? '',
@@ -141,6 +144,14 @@ export function processAccessAttempt(input) {
       groupIds: person ? (index.groupsByPerson.get(person.id) ?? []) : [],
       policies: snap?.policies ?? [],
       schedules: index?.schedules ?? {},
+      visit: visit
+        ? {
+            state: 'active',
+            allowedZoneIds: visit.zoneIds ?? [],
+            validFrom: visit.validFrom,
+            validUntil: visit.validUntil,
+          }
+        : null,
       device: input.device ?? null,
       emergencyActive: input.emergencyActive === true,
       offline,
