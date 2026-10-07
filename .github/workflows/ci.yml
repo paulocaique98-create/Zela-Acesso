@@ -45,6 +45,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - name: Supabase local (project_id zela-acesso-local, portas 553xx)
         run: node scripts/supabase-local.mjs start
+        env:
+          ZELA_EDGE_RUNTIME: '1'
       - name: Migrations limpas + testes de RLS
         run: |
           node scripts/supabase-local.mjs reset
@@ -53,6 +55,8 @@ jobs:
         run: |
           node scripts/seed-dev.mjs
           node scripts/check-rbac-drift.mjs
+      - name: E2E do Edge Agent com a nuvem (edge-gateway, ingestao, atuacao)
+        run: node apps/edge-agent/e2e/cloud-slice.e2e.mjs
       - name: Env publico, build e varredura de segredos no bundle
         run: |
           node scripts/write-web-env.mjs

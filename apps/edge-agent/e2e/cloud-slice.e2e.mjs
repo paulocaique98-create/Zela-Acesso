@@ -105,8 +105,24 @@ const check = (name, fn) => {
   }
 };
 
+// O edge-runtime pode demorar a servir a função logo após o `supabase start` (CI): 401 = a função já responde.
+async function waitForGateway(timeoutMs = 60_000) {
+  const until = Date.now() + timeoutMs;
+  for (;;) {
+    try {
+      const res = await fetch(GATEWAY, { method: 'POST' });
+      if (res.status === 401) return;
+    } catch {
+      /* ainda subindo */
+    }
+    if (Date.now() > until) throw new Error('edge-gateway não respondeu (edge-runtime ligado?)');
+    await new Promise((r) => setTimeout(r, 1000));
+  }
+}
+
 let failed = false;
 try {
+  await waitForGateway();
   const { agentId, secret } = setup();
   const transport = createHttpTransport({ baseUrl: GATEWAY, agentId, secret });
   const store = openStore();
@@ -140,25 +156,44 @@ try {
     assert.notEqual(deny.decision.decision, 'ALLOW');
     assert.equal(deny.actuation.attempted, false);
   });
-  check('2 eventos na fila', () => assert.equal(store.queueDepth(), 2));
+  // Falha real de atuação: o driver cai, a decisão continua ALLOW e a nuvem recebe o resultado DOOR_NOT_OPENED.
+  driver.setOnline(T.point, false);
+  const fail = await go({ type: 'card', number: CARD });
+  check('driver offline: ALLOW, mas atuação falha e é reportada', () => {
+    assert.equal(fail.decision.decision, 'ALLOW');
+    assert.deepEqual(
+      { ok: fail.actuation.ok, code: fail.actuation.code, reported: fail.actuation.reported },
+      { ok: false, code: 'DEVICE_OFFLINE', reported: true },
+    );
+  });
+  check('5 eventos na fila (3 decisões + 2 resultados físicos)', () =>
+    assert.equal(store.queueDepth(), 5),
+  );
 
   const sent = await drainQueue({ store, transport, now: now() });
   check('fila drenada para a nuvem', () => {
     assert.equal(sent.status, 'drained');
-    assert.equal(sent.sent, 2);
+    assert.equal(sent.sent, 5);
   });
   check('fila vazia após o envio', () => assert.equal(store.queueDepth(), 0));
 
   const rows = psql(
-    `select decision || '|' || source || '|' || coalesce(access_point_id::text,'') from public.access_events where tenant_id = '${T.tenant}' order by decision;`,
+    `select event_type || '|' || coalesce(decision,'') || '|' || coalesce(physical_outcome,'') || '|' || source || '|' || coalesce(correlation_id::text,'') from public.access_events where tenant_id = '${T.tenant}' order by seq;`,
   )
     .trim()
     .split('\n')
     .filter(Boolean);
   check('eventos gravados no tenant/site do agente', () => {
-    assert.equal(rows.length, 2);
-    assert.ok(rows.every((r) => r.includes('|EDGE_AGENT|')));
-    assert.ok(rows.some((r) => r.startsWith('ALLOW|')));
+    assert.equal(rows.length, 5);
+    assert.ok(rows.every((r) => r.split('|')[3] === 'EDGE_AGENT'));
+    assert.ok(rows.some((r) => r.startsWith('access_decision|ALLOW|')));
+  });
+  check('resultados físicos gravados e ligados às decisões pela correlação', () => {
+    const f = rows.map((r) => r.split('|'));
+    const outs = f.filter((x) => x[0] === 'physical_outcome');
+    assert.deepEqual(outs.map((x) => x[2]).sort(), ['DOOR_NOT_OPENED', 'DOOR_OPENED']);
+    const decisionCorrs = new Set(f.filter((x) => x[0] === 'access_decision').map((x) => x[4]));
+    assert.ok(outs.every((x) => decisionCorrs.has(x[4])));
   });
 
   const dupe = await transport
@@ -169,7 +204,7 @@ try {
     const n = psql(
       `select count(*) from public.access_events where tenant_id = '${T.tenant}';`,
     ).trim();
-    assert.equal(n, '2');
+    assert.equal(n, '5');
   });
 
   const bad = createHttpTransport({ baseUrl: GATEWAY, agentId, secret: `zes_${'0'.repeat(64)}` });
@@ -207,7 +242,7 @@ if (failed || results.some(([s]) => s === 'FAIL')) process.exit(1);
 // Reconstrói o payload do evento ALLOW já enviado (a fila o marcou como enviado): reaproveita a mesma chave.
 function pickAnyQueued(_store, _allow) {
   const row = psql(
-    `select idempotency_key from public.access_events where tenant_id = '${T.tenant}' and decision = 'ALLOW';`,
+    `select idempotency_key from public.access_events where tenant_id = '${T.tenant}' and decision = 'ALLOW' order by seq limit 1;`,
   ).trim();
   return {
     p_event_type: 'access_decision',

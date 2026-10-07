@@ -69,5 +69,6 @@ Eventos nunca são alterados. `record_access_correction(event_id, reason, correc
 - Sem tela de consulta de eventos nem de edição do modo de anti-passback.
 - Sem partição/retenção (decisão LGPD antes de dados reais); sem assinatura/âncora externa da cadeia.
 - Sem vínculo formal entre `physical_outcome` e o evento de decisão (apenas `correlation_id`).
+- **Resultado físico do Edge (Fase 4D)**: depois de acionar o driver, o agente enfileira um evento `physical_outcome` (source `EDGE_AGENT`, mesma `correlation_id` da decisão, sem `decision`/`reason_code`). `ok` => `DOOR_OPENED`; `TIMEOUT` => `UNKNOWN`; outra falha => `DOOR_NOT_OPENED`. A evidência leva só `{ actuation: { ok, code } }` (código do driver validado por padrão). A decisão original nunca é alterada. A ingestão (`edge_ingest_events`) aceita só `access_decision` e `physical_outcome`; `correction` segue vedado ao agente. Limite: o resultado vem do comando ao driver, não de sensor de porta (DOOR_FORCED / DOOR_HELD_OPEN dependem de driver real).
 - Sem zona-par entrada/saída explícita nem exceção de anti-passback por pessoa.
 - Offline com `degraded_deny`: qualquer decisão (inclusive `DENY` de política) vira `DEGRADED_DENY / OFFLINE_POLICY_DENY`, mascarando o motivo original no código; o motivo original continua em `evidence.steps`. Avaliar na Fase 4 se o código deve preservar o motivo da regra.

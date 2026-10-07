@@ -91,14 +91,14 @@ Código convertido de TypeScript para JS/JSX (D-017). Reexecutado depois da conv
 - Aprovação da Fase 1 (pré-requisito para iniciar a Fase 2).
 - D-005 (Edge em Node+SQLite).
 - D-009 (Node 24 como LTS).
-- Remote git do projeto (habilita rodar o CI).
+- Remote `origin` configurado; push dos commits das Fases 3 e 4 e primeira execução do CI pendentes (decisão do dono).
 
 - **Fase 4D (HAL, Mock Hardware, comandos assinados) IMPLEMENTADA e TESTADA local (07/10/2026), parcial** — novo pacote `packages/device-drivers` (contrato HAL + `createMockHardware`, recusa produção; Vitest 6 PASS) e `apps/edge-agent/src/commands.js` (HMAC-SHA256 por agente, vínculo ao agente, janela ≤60 s, anti-replay por tabela `command_nonces`; Vitest edge-agent 65 PASS; lint ok). Doc `08-HARDWARE-INTEGRATION.md` criado. **PENDENTE**: emissor/chave de comando na nuvem, driver real, acionar o HAL na decisão (vertical slice), reporte de resultado à nuvem, `assessClock` nos comandos, 4C restante (teste do gateway em edge-runtime).
 
 - **Vertical slice no Edge (Mock) IMPLEMENTADO e TESTADO local (07/10/2026)** — `apps/edge-agent/src/access.js` (`handleAccessAttempt`): decide, grava evento+presença, aciona o HAL só em decisão de abertura; Vitest edge-agent 70 PASS, lint ok. Limites: falha do driver não vai à nuvem nem reverte a presença; sem E2E com banco/Edge Function.
 
 ## Próximo
-Reporte de falha de atuação à nuvem; emissor/chave de comando; fechar o resto da 4C; 4E (endurecimento do host). Antes: decisão do dono sobre avançar.
+Emissor/chave de comando; fechar o resto da 4C; 4E (endurecimento do host). Antes: decisão do dono sobre avançar.
 - Regra permanente: Zela Escola (`Projeto_Zela`) protegido.
 
 ## Backlog (fora do escopo do Painel do Desenvolvedor, concluido em 2026-10-06)

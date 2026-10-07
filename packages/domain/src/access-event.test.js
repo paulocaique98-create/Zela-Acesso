@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { toAccessEventParams } from './access-event.js';
+import { toAccessEventParams, toPhysicalOutcomeParams } from './access-event.js';
 import { evaluateAccess } from './access-engine.js';
 
 const decision = {
@@ -112,5 +112,52 @@ describe('contrato x migration 3C', () => {
       [...ACCESS_REASON_CODES].sort(),
     );
     expect(list(/decision in \(([^)]*)\)\),\s*reason_code/)).toEqual([...ACCESS_DECISIONS].sort());
+  });
+});
+
+describe('toPhysicalOutcomeParams', () => {
+  const base = {
+    tenantId: '10000000-0000-0000-0000-00000000000a',
+    siteId: '20000000-0000-0000-0000-00000000000a',
+    occurredAt: new Date('2026-10-07T12:00:00Z'),
+    correlationId: '00000000-0000-4000-8000-000000000001',
+  };
+
+  it('ok => DOOR_OPENED, ligado à decisão pela correlação, sem decisão própria', () => {
+    const p = toPhysicalOutcomeParams({ ...base, actuation: { ok: true, code: 'OK' } });
+    expect(p.p_event_type).toBe('physical_outcome');
+    expect(p.p_physical_outcome).toBe('DOOR_OPENED');
+    expect(p.p_correlation).toBe(base.correlationId);
+    expect(p.p_decision).toBeNull();
+    expect(p.p_reason_code).toBeNull();
+    expect(p.p_source).toBe('EDGE_AGENT');
+  });
+
+  it('falha => DOOR_NOT_OPENED com o código do driver; TIMEOUT => UNKNOWN', () => {
+    const off = toPhysicalOutcomeParams({
+      ...base,
+      actuation: { ok: false, code: 'DEVICE_OFFLINE' },
+    });
+    expect(off.p_physical_outcome).toBe('DOOR_NOT_OPENED');
+    expect(off.p_evidence).toEqual({ actuation: { ok: false, code: 'DEVICE_OFFLINE' } });
+    const to = toPhysicalOutcomeParams({ ...base, actuation: { ok: false, code: 'TIMEOUT' } });
+    expect(to.p_physical_outcome).toBe('UNKNOWN');
+  });
+
+  it('código fora do padrão vira UNKNOWN (nada livre na evidência)', () => {
+    const p = toPhysicalOutcomeParams({
+      ...base,
+      actuation: { ok: false, code: 'pin=1234 falhou' },
+    });
+    expect(p.p_evidence.actuation.code).toBe('UNKNOWN');
+  });
+
+  it('exige correlação, tenant/site, actuation e data válidos', () => {
+    const act = { ok: true, code: 'OK' };
+    expect(() => toPhysicalOutcomeParams({ ...base, correlationId: '', actuation: act })).toThrow();
+    expect(() => toPhysicalOutcomeParams({ ...base, tenantId: '', actuation: act })).toThrow();
+    expect(() => toPhysicalOutcomeParams({ ...base, actuation: {} })).toThrow();
+    expect(() => toPhysicalOutcomeParams({ ...base, occurredAt: 'x', actuation: act })).toThrow();
+    expect(() => toPhysicalOutcomeParams({ ...base, source: 'ENGINE', actuation: act })).toThrow();
   });
 });

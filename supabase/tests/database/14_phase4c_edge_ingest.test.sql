@@ -141,6 +141,45 @@ select throws_ok($$select public.edge_ingest_events((select v::uuid from tests.v
 select is((select ok from public.verify_access_chain('10000000-0000-0000-0000-00000000000a')), true, 'cadeia integra apos a entrega');
 reset role;
 
+-- 4D: resultado fisico da atuacao (physical_outcome), ligado a decisao pela correlacao
+create function tests.po(p_key text, p_overrides jsonb default '{}') returns jsonb language sql as $$
+  select tests.ev(p_key, jsonb_build_object(
+    'p_event_type', 'physical_outcome', 'p_decision', 'ALLOW', 'p_reason_code', 'POLICY_MATCH',
+    'p_physical_outcome', 'DOOR_NOT_OPENED', 'p_correlation', '00000000-0000-4000-8000-0000000000c1',
+    'p_evidence', jsonb_build_object('actuation', jsonb_build_object('ok', false, 'code', 'DEVICE_OFFLINE'))) || p_overrides)
+$$;
+grant execute on function tests.po(text, jsonb) to service_role;
+set local role service_role;
+insert into tests.vars select 'r5', public.edge_ingest_events(
+  (select v::uuid from tests.vars where k='idA'), (select v from tests.vars where k='secA'),
+  jsonb_build_array(
+    tests.po('edge:resultado-0001'),
+    tests.po('edge:resultado-0001'),
+    tests.po('edge:resultado-0002', jsonb_build_object('p_physical_outcome', null)),
+    tests.po('edge:resultado-0003', jsonb_build_object('p_correlation', null)),
+    tests.po('edge:resultado-0004', jsonb_build_object('p_physical_outcome', 'PORTA_VOOU')),
+    tests.po('edge:resultado-0005', jsonb_build_object('p_physical_outcome', 'DOOR_OPENED', 'p_evidence', jsonb_build_object('pin', '1234')))))::text;
+reset role;
+select is((select (v::jsonb)->'results'->0->>'status' from tests.vars where k='r5'), 'recorded', 'resultado fisico gravado');
+select is((select (v::jsonb)->'results'->1->>'status' from tests.vars where k='r5'), 'duplicate', 'resultado fisico repetido = duplicate');
+select is((select (v::jsonb)->'results'->2->>'status' from tests.vars where k='r5'), 'rejected', 'resultado sem physical_outcome rejeitado');
+select is((select (v::jsonb)->'results'->3->>'status' from tests.vars where k='r5'), 'rejected', 'resultado sem correlacao rejeitado');
+select is((select (v::jsonb)->'results'->4->>'status' from tests.vars where k='r5'), 'rejected', 'physical_outcome invalido rejeitado');
+select is((select (v::jsonb)->'results'->5->>'status' from tests.vars where k='r5'), 'rejected', 'evidencia com pin rejeitada no resultado');
+select is((select count(*)::int from public.access_events where idempotency_key like 'edge:resultado-%'), 1, 'so o resultado valido foi gravado');
+select is((select event_type from public.access_events where idempotency_key = 'edge:resultado-0001'), 'physical_outcome', 'tipo physical_outcome');
+select is((select physical_outcome from public.access_events where idempotency_key = 'edge:resultado-0001'), 'DOOR_NOT_OPENED', 'resultado gravado');
+select is((select decision from public.access_events where idempotency_key = 'edge:resultado-0001'), null, 'decisao do payload ignorada no resultado fisico');
+select is((select reason_code from public.access_events where idempotency_key = 'edge:resultado-0001'), null, 'motivo do payload ignorado no resultado fisico');
+select is((select correlation_id from public.access_events where idempotency_key = 'edge:resultado-0001'),
+  '00000000-0000-4000-8000-0000000000c1'::uuid, 'correlacao preservada');
+select is((select tenant_id from public.access_events where idempotency_key = 'edge:resultado-0001'),
+  '10000000-0000-0000-0000-00000000000a'::uuid, 'tenant do agente (payload com tenant B ignorado)');
+select is((select source from public.access_events where idempotency_key = 'edge:resultado-0001'), 'EDGE_AGENT', 'source forcada para EDGE_AGENT');
+set local role service_role;
+select is((select ok from public.verify_access_chain('10000000-0000-0000-0000-00000000000a')), true, 'cadeia integra com resultado fisico');
+reset role;
+
 -- revogado nao entrega
 select tests.login('00000000-0000-0000-0000-0000000000a1');
 select public.revoke_edge_agent((select v::uuid from tests.vars where k='idA'), 'teste de revogacao');

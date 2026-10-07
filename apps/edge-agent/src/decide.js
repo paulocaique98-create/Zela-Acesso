@@ -166,14 +166,16 @@ export function processAccessAttempt(input) {
       snap ? `${snap.tenantId}/${snap.siteId}` : (store.getMeta('binding') ?? '/')
     ).split('/');
     let queued = false;
+    let correlationId = null;
     if (tenantId && siteId) {
+      correlationId = newId();
       const params = toAccessEventParams({
         decision,
         tenantId,
         siteId,
         occurredAt: now,
         source: 'EDGE_AGENT',
-        correlationId: newId(),
+        correlationId,
         idempotencyKey: `edge:${newId()}`,
       });
       if (!point) {
@@ -184,6 +186,21 @@ export function processAccessAttempt(input) {
       queued = store.enqueue(params.p_idempotency_key, params, now.toISOString());
     }
 
-    return { decision, open: OPENING_DECISIONS.includes(decision.decision), queued };
+    return {
+      decision,
+      open: OPENING_DECISIONS.includes(decision.decision),
+      queued,
+      // Vínculo do evento de decisão: o resultado físico (atuação) reaproveita a correlação.
+      correlation: queued
+        ? {
+            tenantId,
+            siteId,
+            correlationId,
+            accessPointId: point ? point.id : null,
+            zoneId: point ? (zone?.id ?? null) : null,
+            personId: person?.id ?? null,
+          }
+        : null,
+    };
   });
 }

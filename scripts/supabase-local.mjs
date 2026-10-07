@@ -24,7 +24,12 @@ if (projectId !== EXPECTED) {
 }
 
 const args = {
-  start: ['start', '-x', 'imgproxy,edge-runtime'],
+  // ZELA_EDGE_RUNTIME=1 mantém o edge-runtime (E2E do Edge Agent com a Edge Function `edge-gateway`).
+  start: [
+    'start',
+    '-x',
+    process.env.ZELA_EDGE_RUNTIME === '1' ? 'imgproxy' : 'imgproxy,edge-runtime',
+  ],
   status: ['status'],
   reset: ['db', 'reset', '--local'],
   test: ['test', 'db', '--local'],

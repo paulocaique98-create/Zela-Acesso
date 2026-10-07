@@ -59,3 +59,52 @@ export function toAccessEventParams(input) {
     p_idempotency_key: input.idempotencyKey ?? null,
   };
 }
+
+const ACTUATION_CODE_RE = /^[A-Z][A-Z0-9_]{0,39}$/;
+
+/**
+ * Resultado físico da atuação (Fase 4): evento `physical_outcome` ligado à decisão pela correlação. Append-only:
+ * a decisão original não muda. Só o código de resultado do driver entra na evidência (allowlist; nunca credencial).
+ * `ok` => DOOR_OPENED; TIMEOUT => UNKNOWN (não se sabe o estado da porta); qualquer outra falha => DOOR_NOT_OPENED.
+ * @param {{
+ *   tenantId: string, siteId: string, occurredAt: Date | string, correlationId: string,
+ *   actuation: { ok: boolean, code: string },
+ *   accessPointId?: string | null, zoneId?: string | null, personId?: string | null,
+ *   source?: 'EDGE_AGENT' | 'DEVICE', idempotencyKey?: string | null,
+ * }} input
+ * @returns {Record<string, unknown>} argumentos nomeados da RPC `record_access_event`
+ */
+export function toPhysicalOutcomeParams(input) {
+  const { tenantId, siteId, occurredAt, correlationId, actuation } = input;
+  if (!tenantId || !siteId) throw new Error('tenantId e siteId são obrigatórios');
+  if (!correlationId) throw new Error('correlationId é obrigatório (liga o resultado à decisão)');
+  if (typeof actuation?.ok !== 'boolean') throw new Error('actuation inválida');
+  const source = input.source ?? 'EDGE_AGENT';
+  if (!['EDGE_AGENT', 'DEVICE'].includes(source)) throw new Error(`source inválida: ${source}`);
+  const at = occurredAt instanceof Date ? occurredAt : new Date(occurredAt);
+  if (Number.isNaN(at.getTime())) throw new Error('occurredAt inválido');
+  const code = ACTUATION_CODE_RE.test(String(actuation.code)) ? String(actuation.code) : 'UNKNOWN';
+  const physicalOutcome = actuation.ok
+    ? 'DOOR_OPENED'
+    : code === 'TIMEOUT'
+      ? 'UNKNOWN'
+      : 'DOOR_NOT_OPENED';
+  return {
+    p_tenant: tenantId,
+    p_site: siteId,
+    p_event_type: 'physical_outcome',
+    p_occurred_at: at.toISOString(),
+    p_decision: null,
+    p_reason_code: null,
+    p_person: input.personId ?? null,
+    p_credential: null,
+    p_access_point: input.accessPointId ?? null,
+    p_zone: input.zoneId ?? null,
+    p_policy: null,
+    p_physical_outcome: physicalOutcome,
+    p_source: source,
+    p_correlation: correlationId,
+    p_evidence: { actuation: { ok: actuation.ok, code } },
+    p_idempotency_key: input.idempotencyKey ?? null,
+  };
+}
