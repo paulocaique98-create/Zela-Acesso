@@ -41,8 +41,10 @@ union all select 'usuarios a apagar', count(*) from _del_u;
 do $$
 declare r record; n bigint;
 begin
-  for r in select table_name from information_schema.columns
-           where table_schema = 'public' and column_name = 'tenant_id' and table_name <> 'tenants' order by 1 loop
+  for r in select c.table_name from information_schema.columns c
+           join information_schema.tables t using (table_schema, table_name)
+           where c.table_schema = 'public' and c.column_name = 'tenant_id' and c.table_name <> 'tenants'
+             and t.table_type = 'BASE TABLE' order by 1 loop
     execute format('delete from public.%I where tenant_id in (select id from _del_t)', r.table_name);
     get diagnostics n = row_count;
     raise notice '% : % linhas', r.table_name, n;
