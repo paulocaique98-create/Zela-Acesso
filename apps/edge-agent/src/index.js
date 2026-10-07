@@ -10,3 +10,4 @@ export * from './runner.js';
 export * from './commands.js';
 export * from './access.js';
 export * from './biometric.js';
+export * from './config.js';

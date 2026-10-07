@@ -7,8 +7,12 @@
     "node": ">=24.0.0"
   },
   "main": "./src/index.js",
+  "bin": {
+    "zela-edge-agent": "./src/main.js"
+  },
   "scripts": {
-    "test": "vitest run"
+    "test": "vitest run",
+    "start": "node src/main.js"
   },
   "dependencies": {
     "@zela/biometrics": "workspace:*",
