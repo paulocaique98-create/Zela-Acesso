@@ -11,6 +11,7 @@ import {
   LifeBuoy,
   ScrollText,
   ShieldCheck,
+  Siren,
   UserCheck,
   UserRound,
   Users,
@@ -50,6 +51,13 @@ const NAV = [
     label: 'Políticas de acesso',
     icon: ShieldCheck,
     permission: 'policy:read',
+    siteLevel: true,
+  },
+  {
+    to: '/operacao',
+    label: 'Operação',
+    icon: Siren,
+    permission: 'alert:read',
     siteLevel: true,
   },
   {

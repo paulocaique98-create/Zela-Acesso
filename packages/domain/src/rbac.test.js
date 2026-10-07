@@ -39,9 +39,9 @@ describe('matriz de permissoes', () => {
     }
   });
 
-  it('total de permissoes bate com o banco (189)', () => {
+  it('total de permissoes bate com o banco (197)', () => {
     const total = Object.values(ROLE_PERMISSIONS).reduce((n, list) => n + list.length, 0);
-    expect(total).toBe(189);
+    expect(total).toBe(197);
   });
 
   it('somente owner/admin usam o suporte da plataforma', () => {

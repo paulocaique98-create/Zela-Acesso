@@ -4,6 +4,7 @@ import { AppShell } from './components/AppShell';
 import { AuditPage, MembersPage, OverviewPage, SitesPage } from './pages/DataPages';
 import { AccessPointsPage, BuildingsPage } from './pages/PhysicalPages';
 import { PoliciesPage } from './pages/PolicyPages';
+import { OperationsPage } from './pages/OperationsPages';
 import { VisitsPage } from './pages/VisitPages';
 import { GroupsPage, PeoplePage, ZonesPage } from './pages/RegistryPages';
 import { HolidaysPage, SchedulesPage } from './pages/SchedulePages';
@@ -53,6 +54,7 @@ export function App() {
               <Route path="grupos" element={<GroupsPage />} />
               <Route path="politicas" element={<PoliciesPage />} />
               <Route path="visitantes" element={<VisitsPage />} />
+              <Route path="operacao" element={<OperationsPage />} />
               <Route path="janelas" element={<SchedulesPage />} />
               <Route path="feriados" element={<HolidaysPage />} />
               <Route path="membros" element={<MembersPage />} />

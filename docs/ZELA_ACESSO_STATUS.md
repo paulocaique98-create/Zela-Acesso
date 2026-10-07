@@ -101,7 +101,7 @@ Código convertido de TypeScript para JS/JSX (D-017). Reexecutado depois da conv
 - **Vertical slice no Edge (Mock) IMPLEMENTADO e TESTADO local (07/10/2026)** — `apps/edge-agent/src/access.js` (`handleAccessAttempt`): decide, grava evento+presença, aciona o HAL só em decisão de abertura; Vitest edge-agent 70 PASS, lint ok. Limites: falha do driver não vai à nuvem nem reverte a presença; sem E2E com banco/Edge Function.
 
 ## Próximo
-Emissor/chave de comando; fechar o resto da 4C; 4E (endurecimento do host). Antes: decisão do dono sobre avançar.
+E2E da tela de Operação e tempo-real/notificações (6C); Fase 7 (biometria, desligada por padrão) ou Fase 8 (hardware real); emissor/chave de comando e 4E. Antes: decisão do dono.
 - Regra permanente: Zela Escola (`Projeto_Zela`) protegido.
 
 ## Backlog (fora do escopo do Painel do Desenvolvedor, concluido em 2026-10-06)
