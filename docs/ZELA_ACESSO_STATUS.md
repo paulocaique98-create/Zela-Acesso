@@ -91,7 +91,7 @@ Código convertido de TypeScript para JS/JSX (D-017). Reexecutado depois da conv
 - Aprovação da Fase 1 (pré-requisito para iniciar a Fase 2).
 - D-005 (Edge em Node+SQLite).
 - D-009 (Node 24 como LTS).
-- Remote `origin` configurado; push dos commits das Fases 3 e 4 e primeira execução do CI pendentes (decisão do dono).
+- Remote `origin` configurado; commits das Fases 3 e 4 enviados e CI verde.
 
 - **Fase 4D (HAL, Mock Hardware, comandos assinados) IMPLEMENTADA e TESTADA local (07/10/2026), parcial** — novo pacote `packages/device-drivers` (contrato HAL + `createMockHardware`, recusa produção; Vitest 6 PASS) e `apps/edge-agent/src/commands.js` (HMAC-SHA256 por agente, vínculo ao agente, janela ≤60 s, anti-replay por tabela `command_nonces`; Vitest edge-agent 65 PASS; lint ok). Doc `08-HARDWARE-INTEGRATION.md` criado. **PENDENTE**: emissor/chave de comando na nuvem, driver real, acionar o HAL na decisão (vertical slice), reporte de resultado à nuvem, `assessClock` nos comandos, 4C restante (teste do gateway em edge-runtime).
 
