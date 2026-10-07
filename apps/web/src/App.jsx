@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 import { AuthProvider } from './auth/AuthProvider';
+import { MfaGate } from './auth/MfaGate';
 import { AppShell } from './components/AppShell';
 import { AuditPage, MembersPage, OverviewPage, SitesPage } from './pages/DataPages';
 import { AccessPointsPage, BuildingsPage } from './pages/PhysicalPages';
@@ -27,43 +28,45 @@ export function App() {
     <BrowserRouter>
       <AuthProvider>
         <WorkspaceProvider>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="plataforma" element={<DeveloperPanel />}>
-              <Route index element={<TenantsPage />} />
-              <Route path="organizacoes/:id/modulos" element={<TenantModulesPage />} />
-              <Route
-                path="planos"
-                element={
-                  <OwnerOnly>
-                    <PlansPage />
-                  </OwnerOnly>
-                }
-              />
-              <Route path="logs" element={<ErrorLogsPage />} />
-              <Route path="biometria" element={<BiometricsPage />} />
-              <Route path="suporte" element={<PlatformSupportPage />} />
-              <Route path="configuracoes" element={<SettingsPage />} />
-            </Route>
-            <Route element={<AppShell />}>
-              <Route index element={<OverviewPage />} />
-              <Route path="sites" element={<SitesPage />} />
-              <Route path="predios" element={<BuildingsPage />} />
-              <Route path="zonas" element={<ZonesPage />} />
-              <Route path="pontos" element={<AccessPointsPage />} />
-              <Route path="pessoas" element={<PeoplePage />} />
-              <Route path="grupos" element={<GroupsPage />} />
-              <Route path="politicas" element={<PoliciesPage />} />
-              <Route path="visitantes" element={<VisitsPage />} />
-              <Route path="operacao" element={<OperationsPage />} />
-              <Route path="biometria" element={<OrgBiometricsPage />} />
-              <Route path="janelas" element={<SchedulesPage />} />
-              <Route path="feriados" element={<HolidaysPage />} />
-              <Route path="membros" element={<MembersPage />} />
-              <Route path="auditoria" element={<AuditPage />} />
-              <Route path="suporte" element={<OrgSupportPage />} />
-            </Route>
-          </Routes>
+          <MfaGate>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="plataforma" element={<DeveloperPanel />}>
+                <Route index element={<TenantsPage />} />
+                <Route path="organizacoes/:id/modulos" element={<TenantModulesPage />} />
+                <Route
+                  path="planos"
+                  element={
+                    <OwnerOnly>
+                      <PlansPage />
+                    </OwnerOnly>
+                  }
+                />
+                <Route path="logs" element={<ErrorLogsPage />} />
+                <Route path="biometria" element={<BiometricsPage />} />
+                <Route path="suporte" element={<PlatformSupportPage />} />
+                <Route path="configuracoes" element={<SettingsPage />} />
+              </Route>
+              <Route element={<AppShell />}>
+                <Route index element={<OverviewPage />} />
+                <Route path="sites" element={<SitesPage />} />
+                <Route path="predios" element={<BuildingsPage />} />
+                <Route path="zonas" element={<ZonesPage />} />
+                <Route path="pontos" element={<AccessPointsPage />} />
+                <Route path="pessoas" element={<PeoplePage />} />
+                <Route path="grupos" element={<GroupsPage />} />
+                <Route path="politicas" element={<PoliciesPage />} />
+                <Route path="visitantes" element={<VisitsPage />} />
+                <Route path="operacao" element={<OperationsPage />} />
+                <Route path="biometria" element={<OrgBiometricsPage />} />
+                <Route path="janelas" element={<SchedulesPage />} />
+                <Route path="feriados" element={<HolidaysPage />} />
+                <Route path="membros" element={<MembersPage />} />
+                <Route path="auditoria" element={<AuditPage />} />
+                <Route path="suporte" element={<OrgSupportPage />} />
+              </Route>
+            </Routes>
+          </MfaGate>
           <Toaster />
         </WorkspaceProvider>
       </AuthProvider>

@@ -2,6 +2,7 @@ import { DataTable } from '../components/DataTable';
 import { supabase } from '../lib/supabase';
 import { useQuery } from '../lib/useQuery';
 import { useWorkspace } from '../workspace/WorkspaceProvider';
+import { MfaSettingsCard } from '../auth/MfaGate';
 
 /** @type {Record<string, string>} */
 const ROLE_LABEL = {
@@ -107,6 +108,7 @@ export function MembersPage() {
   }, [current?.id]);
   return (
     <Guard permission="member:read">
+      <MfaSettingsCard />
       <Status q={q}>
         {(rows) => (
           <DataTable
