@@ -57,6 +57,8 @@ jobs:
           node scripts/check-rbac-drift.mjs
       - name: E2E do Edge Agent com a nuvem (edge-gateway, ingestao, atuacao)
         run: node apps/edge-agent/e2e/cloud-slice.e2e.mjs
+      - name: E2E da eliminação biométrica (revogar, Edge apaga, confirmação, erased)
+        run: node apps/edge-agent/e2e/biometric-erasure.e2e.mjs
       - name: Env publico, build e varredura de segredos no bundle
         run: |
           node scripts/write-web-env.mjs

@@ -117,6 +117,46 @@ describe('edge-gateway', () => {
     });
   });
 
+  describe('confirm_biometric_erasure', () => {
+    const PROFILE = 'b0000000-0000-0000-0000-000000000009';
+    it('repassa o perfil à RPC e devolve confirmed', async () => {
+      const rpc = rpcOk(true);
+      const res = await handle(req({ op: 'confirm_biometric_erasure', profileId: PROFILE }), {
+        rpc,
+      });
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ confirmed: true });
+      expect(rpc).toHaveBeenCalledWith('edge_confirm_biometric_erasure', {
+        p_agent: AGENT,
+        p_secret: SECRET,
+        p_profile: PROFILE,
+      });
+    });
+    it('RPC false (outro tenant, já apagado, segredo inválido) = confirmed:false, sem vazar o motivo', async () => {
+      const res = await handle(req({ op: 'confirm_biometric_erasure', profileId: PROFILE }), {
+        rpc: rpcOk(false),
+      });
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ confirmed: false });
+    });
+    it('profileId ausente ou malformado = 400 sem chamar o banco', async () => {
+      const rpc = rpcOk(true);
+      for (const profileId of [undefined, 7, "x'; drop", ''])
+        expect(
+          (await handle(req({ op: 'confirm_biometric_erasure', profileId }), { rpc })).status,
+        ).toBe(400);
+      expect(rpc).not.toHaveBeenCalled();
+    });
+    it('erro do banco = 502 genérico', async () => {
+      const rpc = vi.fn(async () => ({ data: null, error: { message: 'segredo vazado?' } }));
+      const res = await handle(req({ op: 'confirm_biometric_erasure', profileId: PROFILE }), {
+        rpc,
+      });
+      expect(res.status).toBe(502);
+      expect(JSON.stringify(await res.json())).not.toContain('vazado');
+    });
+  });
+
   describe('events', () => {
     const ev = (n) => ({ p_idempotency_key: `edge:${n}` });
     it('repassa o lote', async () => {

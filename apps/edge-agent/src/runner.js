@@ -2,6 +2,7 @@
 // Tudo injetado (transporte, relógio, timers) para testar sem rede nem espera. Revogação em qualquer etapa
 // para o laço: um agente revogado não tenta mais falar com a nuvem (o cache já foi apagado pela etapa).
 
+import { runBiometricErasures } from './biometric.js';
 import { drainQueue } from './drain.js';
 import { sendHeartbeat } from './heartbeat.js';
 import { syncSnapshot } from './sync.js';
@@ -22,10 +23,20 @@ export const DEFAULT_INTERVALS = {
  *   last: { heartbeat?: number, sync?: number, drain?: number },
  *   intervals?: Partial<typeof DEFAULT_INTERVALS>,
  *   random?: () => number,
+ *   biometricProvider?: object | null, // omitido = Edge sem biometria (não roda a fila); null = sem provedor (perfis ficam na fila)
  * }} input
  * @returns {Promise<{ revoked: boolean, ran: string[], results: Record<string, any> }>}
  */
-export async function runOnce({ store, transport, now, version, last, intervals, random }) {
+export async function runOnce({
+  store,
+  transport,
+  now,
+  version,
+  last,
+  intervals,
+  random,
+  biometricProvider: provider,
+}) {
   const iv = { ...DEFAULT_INTERVALS, ...intervals };
   const due = (k, ms) => last[k] === undefined || now.getTime() - last[k] >= ms;
   const out = { revoked: false, ran: /** @type {string[]} */ ([]), results: {} };
@@ -42,6 +53,12 @@ export async function runOnce({ store, transport, now, version, last, intervals,
     last.sync = now.getTime();
     out.results.sync = await syncSnapshot({ store, transport, now });
     if (out.results.sync.status === 'revoked') return { ...out, revoked: true };
+    // Fila de eliminação biométrica (7D): depois de cada sync, que é quem traz/atualiza a fila.
+    if (provider !== undefined && out.results.sync.status !== 'offline') {
+      out.ran.push('biometricErasure');
+      out.results.biometricErasure = await runBiometricErasures({ store, transport, provider });
+      if (out.results.biometricErasure.status === 'revoked') return { ...out, revoked: true };
+    }
   }
   if (due('drain', iv.drainMs)) {
     out.ran.push('drain');

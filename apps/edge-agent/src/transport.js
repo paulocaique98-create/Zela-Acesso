@@ -38,5 +38,6 @@ export function createHttpTransport({
     heartbeat: (info) => call({ op: 'heartbeat', ...info }),
     pullSnapshot: (knownHash) => call({ op: 'snapshot', knownHash }),
     sendEvents: (events) => call({ op: 'events', events }),
+    confirmBiometricErasure: (profileId) => call({ op: 'confirm_biometric_erasure', profileId }),
   };
 }

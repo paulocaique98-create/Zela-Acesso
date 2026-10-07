@@ -1,8 +1,8 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { MOCK_SCENARIOS, createMockBiometricProvider } from '@zela/biometrics';
 import { createMockHardware } from '@zela/device-drivers';
 import { handleAccessAttempt } from './access.js';
-import { processBiometricErasures } from './biometric.js';
+import { processBiometricErasures, runBiometricErasures } from './biometric.js';
 import { IDS, MONDAY_10H, makeSnapshot } from './fixtures.js';
 import { applySnapshot } from './snapshot.js';
 import { openStore } from './store.js';
@@ -165,5 +165,60 @@ describe('fila de eliminação (7D)', () => {
       throw new Error('x');
     };
     expect((await processBiometricErasures({ store, provider })).erased).toEqual([]);
+  });
+});
+
+describe('apagar e confirmar na nuvem (7D)', () => {
+  const pending = [
+    { profileId: 'b0000000-0000-0000-0000-000000000009', provider: 'mock', templateRef: 'mock:a' },
+    { profileId: 'b0000000-0000-0000-0000-00000000000a', provider: 'mock', templateRef: 'mock:b' },
+  ];
+  const ids = pending.map((p) => p.profileId);
+  const run = (transport, prov = provider) =>
+    runBiometricErasures({ store, transport, provider: prov });
+
+  it('confirma cada perfil apagado', async () => {
+    load(snap({ erasure: pending }));
+    const confirmBiometricErasure = vi.fn(async () => ({ confirmed: true }));
+    const r = await run({ confirmBiometricErasure });
+    expect(r).toMatchObject({ status: 'done', confirmed: ids, failed: [] });
+    expect(confirmBiometricErasure.mock.calls.map((c) => c[0])).toEqual(ids);
+  });
+
+  it('rede cai: o perfil não é confirmado e segue na fila; os demais continuam', async () => {
+    load(snap({ erasure: pending }));
+    const confirmBiometricErasure = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+      .mockResolvedValueOnce({ confirmed: true });
+    const r = await run({ confirmBiometricErasure });
+    expect(r.failed).toEqual([ids[0]]);
+    expect(r.confirmed).toEqual([ids[1]]);
+    // a fila vem do cache: sem novo sync, a próxima rodada tenta os dois de novo
+    expect((await processBiometricErasures({ store, provider })).erased).toEqual(ids);
+  });
+
+  it('provedor falha: não chama a nuvem', async () => {
+    load(snap({ erasure: pending }));
+    const confirmBiometricErasure = vi.fn();
+    const r = await run({ confirmBiometricErasure }, null);
+    expect(r.failed).toEqual(ids);
+    expect(confirmBiometricErasure).not.toHaveBeenCalled();
+  });
+
+  it('nuvem diz confirmed:false: não conta como confirmado', async () => {
+    load(snap({ erasure: pending }));
+    const r = await run({ confirmBiometricErasure: async () => ({ confirmed: false }) });
+    expect(r.confirmed).toEqual([]);
+    expect(r.failed).toEqual(ids);
+  });
+
+  it('401 (agente revogado): para e apaga o cache', async () => {
+    load(snap({ erasure: pending }));
+    const confirmBiometricErasure = vi.fn(async () => null);
+    const r = await run({ confirmBiometricErasure });
+    expect(r.status).toBe('revoked');
+    expect(confirmBiometricErasure).toHaveBeenCalledTimes(1);
+    expect(store.loadSnapshotRow()).toBeFalsy();
   });
 });

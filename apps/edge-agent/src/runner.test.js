@@ -58,6 +58,29 @@ describe('runOnce', () => {
   });
 });
 
+describe('runOnce: eliminação biométrica (7D)', () => {
+  const run = (t, extra) =>
+    runOnce({ store: openStore(), transport: t, now: T0, version: 'v', last: {}, ...extra });
+
+  it('sem biometricProvider (Edge sem biometria): a etapa não roda', async () => {
+    const r = await run(transport());
+    expect(r.ran).toEqual(['heartbeat', 'sync', 'drain']);
+  });
+
+  it('roda logo depois do sync, antes do drain', async () => {
+    const r = await run(transport(), { biometricProvider: null });
+    expect(r.ran).toEqual(['heartbeat', 'sync', 'biometricErasure', 'drain']);
+  });
+
+  it('sync offline: pula a etapa (a fila só vem do snapshot)', async () => {
+    const boom = async () => {
+      throw new Error('ECONNREFUSED');
+    };
+    const r = await run(transport({ pullSnapshot: boom }), { biometricProvider: null });
+    expect(r.ran).toEqual(['heartbeat', 'sync', 'drain']);
+  });
+});
+
 describe('runLoop', () => {
   it('para ao ser revogado e devolve "revoked"', async () => {
     const t = transport({ heartbeat: vi.fn(async () => null) });

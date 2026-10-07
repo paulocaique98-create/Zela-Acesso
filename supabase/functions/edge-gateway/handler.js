@@ -110,6 +110,17 @@ export async function handle(req, deps) {
       if (!data) return unauthorized();
       return json(200, data);
     }
+    case 'confirm_biometric_erasure': {
+      const profile = typeof body.profileId === 'string' ? body.profileId : '';
+      if (!AGENT_ID_RE.test(profile)) return json(400, { error: 'invalid_body' });
+      const { data, error } = await deps.rpc('edge_confirm_biometric_erasure', {
+        ...base,
+        p_profile: profile,
+      });
+      if (error) return fail();
+      // false = agente invalido OU perfil nao elegivel (ja apagado / outro tenant); a RPC nao distingue, o gateway tambem nao.
+      return json(200, { confirmed: data === true });
+    }
     default:
       return json(400, { error: 'invalid_body' });
   }

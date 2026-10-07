@@ -9,3 +9,4 @@ export * from './transport.js';
 export * from './runner.js';
 export * from './commands.js';
 export * from './access.js';
+export * from './biometric.js';

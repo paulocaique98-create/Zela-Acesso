@@ -53,3 +53,31 @@ export async function processBiometricErasures({ store, provider }) {
   }
   return out;
 }
+
+/**
+ * Apaga no provedor e confirma na nuvem cada perfil da fila. O que falhar (provedor, rede) segue na fila do
+ * snapshot e é tentado de novo no próximo sync; apagar de novo é inócuo. 401 = agente revogado: apaga o cache.
+ * @param {{ store: object, transport: { confirmBiometricErasure?: (id: string) => Promise<null | { confirmed: boolean }> },
+ *           provider?: object | null }} input
+ * @returns {Promise<{ status: 'done' | 'revoked', erased: string[], confirmed: string[], failed: string[] }>}
+ */
+export async function runBiometricErasures({ store, transport, provider }) {
+  const { erased, failed } = await processBiometricErasures({ store, provider });
+  const out = { status: /** @type {'done' | 'revoked'} */ ('done'), erased, confirmed: [], failed };
+  for (const profileId of erased) {
+    let res;
+    try {
+      res = await transport.confirmBiometricErasure(profileId);
+    } catch {
+      failed.push(profileId); // rede/5xx: o gabarito já foi apagado; a confirmação é repetida no próximo sync
+      continue;
+    }
+    if (res === null) {
+      store.wipeCache();
+      return { ...out, status: 'revoked' };
+    }
+    if (res?.confirmed === true) out.confirmed.push(profileId);
+    else failed.push(profileId);
+  }
+  return out;
+}
