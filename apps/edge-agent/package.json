@@ -1,0 +1,21 @@
+{
+  "name": "@zela/edge-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "main": "./src/index.js",
+  "scripts": {
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@zela/device-drivers": "workspace:*",
+    "@zela/domain": "workspace:*",
+    "bcryptjs": "^3.0.2"
+  },
+  "devDependencies": {
+    "vitest": "^5.0.3"
+  }
+}

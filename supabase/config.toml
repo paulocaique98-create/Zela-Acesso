@@ -419,3 +419,8 @@ entrypoint = "./functions/create-tenant-owner/index.js"
 
 [functions.lookup-cnpj]
 entrypoint = "./functions/lookup-cnpj/index.js"
+
+[functions.edge-gateway]
+entrypoint = "./functions/edge-gateway/index.js"
+# O agente nao tem JWT de usuario: a autenticacao e o par id/segredo (RPCs edge_*, so service_role).
+verify_jwt = false

@@ -27,6 +27,22 @@ importers:
         specifier: ^3.9.9
         version: 3.9.9
 
+  apps/edge-agent:
+    dependencies:
+      '@zela/device-drivers':
+        specifier: workspace:*
+        version: link:../../packages/device-drivers
+      '@zela/domain':
+        specifier: workspace:*
+        version: link:../../packages/domain
+      bcryptjs:
+        specifier: ^3.0.2
+        version: 3.0.3
+    devDependencies:
+      vitest:
+        specifier: ^5.0.3
+        version: 5.0.3(@types/node@24.19.1)(vite@8.3.3(@types/node@24.19.1)(jiti@2.7.0))
+
   apps/web:
     dependencies:
       '@fontsource-variable/inter':
@@ -63,6 +79,12 @@ importers:
       vite:
         specifier: ^8.3.3
         version: 8.3.3(@types/node@24.19.1)(jiti@2.7.0)
+      vitest:
+        specifier: ^5.0.3
+        version: 5.0.3(@types/node@24.19.1)(vite@8.3.3(@types/node@24.19.1)(jiti@2.7.0))
+
+  packages/device-drivers:
+    devDependencies:
       vitest:
         specifier: ^5.0.3
         version: 5.0.3(@types/node@24.19.1)(vite@8.3.3(@types/node@24.19.1)(jiti@2.7.0))
@@ -469,6 +491,10 @@ packages:
   balanced-match@4.0.4:
     resolution: {integrity: sha512-BLrgEcRTwX2o6gGxGOCNyMvGSp35YofuYzw9h1IMTRmKqttAZZVU67bdb9Pr2vUHA8+j3i2tJfjO6C6+4myGTA==}
     engines: {node: 18 || 20 || >=22}
+
+  bcryptjs@3.0.3:
+    resolution: {integrity: sha512-GlF5wPWnSa/X5LKM1o0wz0suXIINz1iHRLvTS+sLyi7XPbe5ycmYI3DlZqVGZZtDgl4DmasFg7gOB3JYbphV5g==}
+    hasBin: true
 
   brace-expansion@5.0.12:
     resolution: {integrity: sha512-YovQ3rzhaLMIrDjNDMkNS01tea93qhEhG5xy8f6+R0l+dw3Ki+5sCoIoI942iuLZTHWogWktgwVDhU09iNEimQ==}
@@ -1388,6 +1414,8 @@ snapshots:
   assertion-error@2.0.1: {}
 
   balanced-match@4.0.4: {}
+
+  bcryptjs@3.0.3: {}
 
   brace-expansion@5.0.12:
     dependencies:
