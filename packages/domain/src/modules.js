@@ -137,7 +137,7 @@ export const MODULES = [
         desc: 'Por meio de um BiometricProvider, sujeito a benchmark e à base legal da organização',
       },
     ],
-    where: [{ portal: 'Painel da organização', menus: 'Biometria (planejado)' }],
+    where: [{ portal: 'Painel da organização', menus: 'Biometria' }],
     warning:
       'Só ligar com base legal e consentimento da organização. A plataforma não acessa imagens.',
     onDisable:

@@ -51,6 +51,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.117.2
         version: 2.117.2
+      '@zela/biometrics':
+        specifier: workspace:*
+        version: link:../../packages/biometrics
       '@zela/domain':
         specifier: workspace:*
         version: link:../../packages/domain

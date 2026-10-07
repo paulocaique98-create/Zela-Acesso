@@ -9,7 +9,7 @@
 | 4 | Edge Agent: enrollment, heartbeat, cache, fila, sync, comandos; Mock Hardware | Cenários offline/duplicidade passando |
 | 5 | Visitantes | Ciclo convite→check-out testado |
 | 6 | Dashboard operacional, alertas, incidentes, presença (ler Lei 14.967 antes) | E2E operacional |
-| 7 | Biometria via provider (ler Guia ANPD antes) | Benchmark e parecer jurídico registrados |
+| 7 | Biometria via provider (Radar/NTs ANPD lidos; 7A–7C feitas, 7D pendente) | Benchmark e parecer jurídico registrados |
 | 8 | Hardware real (1 fabricante com documentação) | Teste de bancada documentado |
 | 9 | Hardening, backup/restore, DR | Security Audit + Adversarial Verify sem críticos |
 | 10–11 | Piloto controlado → RC | Critérios da Seção 58 do Prompt-Mestre |

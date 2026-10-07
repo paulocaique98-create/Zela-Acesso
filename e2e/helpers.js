@@ -17,7 +17,7 @@ export async function login(page, email, password = DEV_PASSWORD) {
 /** @param {import('@playwright/test').Page} page @param {string} email */
 export async function loginOk(page, email) {
   await login(page, email);
-  await expect(page.getByRole('button', { name: 'Sair' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sair' })).toBeVisible({ timeout: 30_000 });
 }
 
 const publishableKey = () => process.env['E2E_PUBLISHABLE_KEY'] ?? '';

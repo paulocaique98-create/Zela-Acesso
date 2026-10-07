@@ -6,6 +6,7 @@ import { AccessPointsPage, BuildingsPage } from './pages/PhysicalPages';
 import { PoliciesPage } from './pages/PolicyPages';
 import { OperationsPage } from './pages/OperationsPages';
 import { VisitsPage } from './pages/VisitPages';
+import { OrgBiometricsPage } from './pages/BiometricPages';
 import { GroupsPage, PeoplePage, ZonesPage } from './pages/RegistryPages';
 import { HolidaysPage, SchedulesPage } from './pages/SchedulePages';
 import { LoginPage } from './pages/LoginPage';
@@ -55,6 +56,7 @@ export function App() {
               <Route path="politicas" element={<PoliciesPage />} />
               <Route path="visitantes" element={<VisitsPage />} />
               <Route path="operacao" element={<OperationsPage />} />
+              <Route path="biometria" element={<OrgBiometricsPage />} />
               <Route path="janelas" element={<SchedulesPage />} />
               <Route path="feriados" element={<HolidaysPage />} />
               <Route path="membros" element={<MembersPage />} />
