@@ -17,6 +17,48 @@ const json = (status, payload) =>
   });
 const unauthorized = () => json(401, { error: 'unauthorized' });
 
+const MASTER_RE = /^[0-9a-f]{64}$/;
+const hex = (buf) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+async function hmacHex(key, message) {
+  const k = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(key),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  return hex(await crypto.subtle.sign('HMAC', k, new TextEncoder().encode(message)));
+}
+
+/** Chave de comando do agente (D-021): HMAC(mestra, id do agente). A mestra nunca vai ao banco nem ao agente. */
+export const deriveCommandKey = (masterHex, agentId) =>
+  hmacHex(masterHex, `zela-cmd-key/v1:${agentId.toLowerCase()}`);
+
+/** Mesma forma canonica de apps/edge-agent/src/commands.js (canonicalCommand). */
+async function signCommandRow(row, key) {
+  const cmd = {
+    v: 1,
+    id: row.id,
+    agent_id: row.agentId,
+    action: row.action,
+    point_id: row.pointId,
+    ...(row.durationMs == null ? {} : { duration_ms: row.durationMs }),
+    issued_at: new Date(row.issuedAt).toISOString(),
+    expires_at: new Date(row.expiresAt).toISOString(),
+  };
+  const canonical = JSON.stringify([
+    cmd.v,
+    cmd.id,
+    cmd.agent_id,
+    cmd.action,
+    cmd.point_id,
+    cmd.duration_ms ?? null,
+    cmd.issued_at,
+    cmd.expires_at,
+  ]);
+  return { ...cmd, signature: await hmacHex(key, canonical) };
+}
+
 /** Limite por agente em janela de 1 minuto (melhor esforco: o estado vive no isolate). */
 export function createRateLimiter(limit = RATE_LIMIT_PER_MINUTE, windowMs = 60_000) {
   const hits = new Map();
@@ -37,7 +79,7 @@ export function createRateLimiter(limit = RATE_LIMIT_PER_MINUTE, windowMs = 60_0
 /**
  * @param {Request} req
  * @param {{ rpc: (name: string, args: Record<string, unknown>) => Promise<{ data: any, error: any }>,
- *           allow?: (key: string) => boolean }} deps
+ *           allow?: (key: string) => boolean, commandMasterKey?: string }} deps
  */
 export async function handle(req, deps) {
   if (req.method !== 'POST') return json(405, { error: 'method_not_allowed' });
@@ -120,6 +162,37 @@ export async function handle(req, deps) {
       if (error) return fail();
       // false = agente invalido OU perfil nao elegivel (ja apagado / outro tenant); a RPC nao distingue, o gateway tambem nao.
       return json(200, { confirmed: data === true });
+    }
+    case 'poll_commands': {
+      // Sem chave mestra configurada nada e reivindicado nem assinado (falha fechada; o pedido segue pendente).
+      const master = deps.commandMasterKey;
+      if (!master || !MASTER_RE.test(master)) return json(200, { commands: [] });
+      const { data, error } = await deps.rpc('edge_claim_commands', base);
+      if (error) return fail();
+      if (!data) return unauthorized();
+      const key = await deriveCommandKey(master, agentId);
+      const commands = await Promise.all(data.map((row) => signCommandRow(row, key)));
+      return json(200, { commands });
+    }
+    case 'report_command_result': {
+      const id = typeof body.commandId === 'string' ? body.commandId : '';
+      const status = body.status;
+      const code = body.code;
+      if (
+        !AGENT_ID_RE.test(id) ||
+        !['executed', 'failed', 'rejected'].includes(status) ||
+        typeof code !== 'string' ||
+        !/^[A-Z0-9_]{1,64}$/.test(code)
+      )
+        return json(400, { error: 'invalid_body' });
+      const { data, error } = await deps.rpc('edge_report_command_result', {
+        ...base,
+        p_command: id,
+        p_status: status,
+        p_code: code,
+      });
+      if (error) return error.code === '22023' ? json(400, { error: 'invalid_body' }) : fail();
+      return json(200, { recorded: data === true });
     }
     default:
       return json(400, { error: 'invalid_body' });

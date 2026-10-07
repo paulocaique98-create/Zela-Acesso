@@ -383,8 +383,9 @@ inspector_port = 55383
 # The Deno major version to use.
 deno_version = 2
 
-# [edge_runtime.secrets]
-# secret_key = "env(SECRET_VALUE)"
+[edge_runtime.secrets]
+# Chave mestra dos comandos de dispositivo (D-021): vem do ambiente (supabase/.env, ignorado pelo git).
+COMMAND_MASTER_KEY = "env(COMMAND_MASTER_KEY)"
 
 [analytics]
 enabled = false

@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   MAX_EVENTS_PER_BATCH,
   createRateLimiter,
+  deriveCommandKey,
   handle,
 } from '../../../supabase/functions/edge-gateway/handler.js';
 
@@ -154,6 +155,76 @@ describe('edge-gateway', () => {
       });
       expect(res.status).toBe(502);
       expect(JSON.stringify(await res.json())).not.toContain('vazado');
+    });
+  });
+
+  describe('comandos de dispositivo (4E)', () => {
+    const MASTER = 'ab'.repeat(32);
+    const CMD = 'c0000000-0000-0000-0000-000000000001';
+    const row = {
+      id: CMD,
+      agentId: AGENT,
+      pointId: 'd0000000-0000-0000-0000-000000000001',
+      action: 'unlock',
+      durationMs: 3000,
+      issuedAt: '2026-10-07T12:00:00.123456+00:00',
+      expiresAt: '2026-10-07T12:00:30.123456+00:00',
+    };
+    it('poll assina com a chave do agente e normaliza as datas', async () => {
+      const res = await handle(req({ op: 'poll_commands' }), {
+        rpc: rpcOk([row]),
+        commandMasterKey: MASTER,
+      });
+      expect(res.status).toBe(200);
+      const { commands } = await res.json();
+      expect(commands).toHaveLength(1);
+      expect(commands[0]).toMatchObject({ v: 1, id: CMD, agent_id: AGENT, point_id: row.pointId });
+      expect(commands[0].issued_at).toBe('2026-10-07T12:00:00.123Z');
+      expect(commands[0].signature).toMatch(/^[0-9a-f]{64}$/);
+      expect(await deriveCommandKey(MASTER, AGENT)).not.toBe(
+        await deriveCommandKey(MASTER, 'outro-agente'),
+      );
+    });
+    it.each([[''], [undefined], ['curta']])(
+      'sem chave mestra válida (%s) não reivindica nem assina',
+      async (commandMasterKey) => {
+        const rpc = rpcOk([row]);
+        const res = await handle(req({ op: 'poll_commands' }), { rpc, commandMasterKey });
+        expect(await res.json()).toEqual({ commands: [] });
+        expect(rpc).not.toHaveBeenCalled();
+      },
+    );
+    it('agente inválido (RPC null) = 401', async () => {
+      const res = await handle(req({ op: 'poll_commands' }), {
+        rpc: rpcOk(null),
+        commandMasterKey: MASTER,
+      });
+      expect(res.status).toBe(401);
+    });
+    it('resultado: repassa e devolve recorded', async () => {
+      const rpc = rpcOk(true);
+      const res = await handle(
+        req({ op: 'report_command_result', commandId: CMD, status: 'executed', code: 'OK' }),
+        { rpc },
+      );
+      expect(await res.json()).toEqual({ recorded: true });
+      expect(rpc).toHaveBeenCalledWith('edge_report_command_result', {
+        p_agent: AGENT,
+        p_secret: SECRET,
+        p_command: CMD,
+        p_status: 'executed',
+        p_code: 'OK',
+      });
+    });
+    it.each([
+      [{ commandId: 'x', status: 'executed', code: 'OK' }],
+      [{ commandId: CMD, status: 'pending', code: 'OK' }],
+      [{ commandId: CMD, status: 'executed', code: 'ok minúsculo' }],
+      [{ commandId: CMD, status: 'executed' }],
+    ])('resultado malformado = 400 sem chamar o banco', async (b) => {
+      const rpc = rpcOk(true);
+      expect((await handle(req({ op: 'report_command_result', ...b }), { rpc })).status).toBe(400);
+      expect(rpc).not.toHaveBeenCalled();
     });
   });
 

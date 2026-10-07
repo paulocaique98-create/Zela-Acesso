@@ -16,6 +16,34 @@ function transport(over = {}) {
   };
 }
 
+describe('runOnce — comandos remotos (4E)', () => {
+  it('só roda com `commands` configurado e a cada commandsMs; 401 revoga', async () => {
+    const store = openStore();
+    const pollCommands = vi.fn(async () => ({ commands: [] }));
+    const t = transport({ pollCommands });
+    const last = {};
+    const commands = { driver: {}, key: 'k', agentId: 'a' };
+    const none = await runOnce({ store, transport: t, now: T0, version: 'v', last: {} });
+    expect(none.ran).not.toContain('commands');
+    const a = await runOnce({ store, transport: t, now: T0, version: 'v', last, commands });
+    expect(a.ran).toEqual(['heartbeat', 'sync', 'commands', 'drain']);
+    const b = await runOnce({ store, transport: t, now: at(1_000), version: 'v', last, commands });
+    expect(b.ran).toEqual([]);
+    const c = await runOnce({ store, transport: t, now: at(5_000), version: 'v', last, commands });
+    expect(c.ran).toEqual(['commands']);
+    const rev = transport({ pollCommands: async () => null });
+    const d = await runOnce({
+      store,
+      transport: rev,
+      now: at(10_000),
+      version: 'v',
+      last,
+      commands,
+    });
+    expect(d.revoked).toBe(true);
+  });
+});
+
 describe('runOnce', () => {
   it('primeira rodada executa tudo, nesta ordem; a seguinte não repete antes do intervalo', async () => {
     const store = openStore();

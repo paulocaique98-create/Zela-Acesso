@@ -23,9 +23,8 @@ Verificação, nesta ordem: formato → `agent_id` do agente → HMAC-SHA256 (he
 
 ## 4. Limites e pendências
 
-- **PENDENTE**: emissor (assinatura na nuvem) e distribuição/rotação da chave de comando por agente (o segredo do agente está só como hash na nuvem; a chave de comando precisa de canal próprio). Decidir junto com mTLS vs. segredo (`19-DECISIONS.md`).
+- **IMPLEMENTADO (4E, D-021)**: emissor e entrega. `request_device_command` (permissão `device:command` por site, motivo, auditoria) → `edge-gateway` `poll_commands` assina com a chave do agente (HMAC da `COMMAND_MASTER_KEY` com o id; `scripts/command-key.mjs`) → `command-poll.js` verifica, aciona o HAL e reporta (`report_command_result`). Só `unlock` remoto. **PENDENTE**: rotação da mestra com `kid`, canal seguro de instalação da chave no agente (hoje cópia manual da saída do script), `lock` remoto (risco à saída segura), UI do operador, o processo `apps/edge-agent` ainda não monta `commands` no `runLoop`, driver real.
 - **PENDENTE**: driver real (exige documentação oficial do fabricante) — requisito antes do release operacional.
 - **IMPLEMENTADO (Edge, Mock)**: vertical slice `handleAccessAttempt` (`access.js`): credencial → `evaluateAccess` → evento na fila + presença (transação) → `driver.unlock` só se a decisão for de abertura. Decisão/evento são gravados antes do hardware. **Limite**: se o driver falhar (offline/timeout), o evento fica como ALLOW e a presença já avançou (anti-passback pode gerar violação falsa); a falha só aparece no retorno (`actuation`), não na nuvem. PENDENTE: reportar falha de atuação e reverter presença. Não testado de ponta a ponta com a nuvem (Edge Function/banco) nem com hardware real.
-- **PENDENTE**: o resultado do comando não é reportado à nuvem (a ingestão aceita só `access_decision`).
 - **PENDENTE**: fail-safe/fail-secure por ponto aplicado no driver; emergência: nenhum caminho aqui bloqueia saída segura (o contrato não tem “trancar permanentemente”).
 - Relógio: a validade usa o relógio do host; com deriva alta o comando pode ser aceito/recusado indevidamente (`assessClock` ainda não é consultado aqui).

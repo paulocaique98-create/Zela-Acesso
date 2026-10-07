@@ -39,9 +39,9 @@ describe('matriz de permissoes', () => {
     }
   });
 
-  it('total de permissoes bate com o banco (208)', () => {
+  it('total de permissoes bate com o banco (211)', () => {
     const total = Object.values(ROLE_PERMISSIONS).reduce((n, list) => n + list.length, 0);
-    expect(total).toBe(208);
+    expect(total).toBe(211);
   });
 
   it('biometria: recepcao sem acesso; politica so owner/admin; cadastro nao inclui auditor', () => {

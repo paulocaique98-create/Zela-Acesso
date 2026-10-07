@@ -3,6 +3,7 @@
 // para o laço: um agente revogado não tenta mais falar com a nuvem (o cache já foi apagado pela etapa).
 
 import { runBiometricErasures } from './biometric.js';
+import { pollAndRunCommands } from './command-poll.js';
 import { drainQueue } from './drain.js';
 import { sendHeartbeat } from './heartbeat.js';
 import { syncSnapshot } from './sync.js';
@@ -11,6 +12,7 @@ export const DEFAULT_INTERVALS = {
   heartbeatMs: 60_000,
   syncMs: 5 * 60_000, // também é o teto do limite conhecido "cartão revogado vale até o próximo sync"
   drainMs: 10_000,
+  commandsMs: 5_000, // latência de uma abertura remota
 };
 
 /**
@@ -20,10 +22,11 @@ export const DEFAULT_INTERVALS = {
  *   transport: object,
  *   now: Date,
  *   version: string,
- *   last: { heartbeat?: number, sync?: number, drain?: number },
+ *   last: { heartbeat?: number, sync?: number, drain?: number, commands?: number },
  *   intervals?: Partial<typeof DEFAULT_INTERVALS>,
  *   random?: () => number,
  *   biometricProvider?: object | null, // omitido = Edge sem biometria (não roda a fila); null = sem provedor (perfis ficam na fila)
+ *   commands?: { driver: object, key: string | Buffer, agentId: string } | null, // omitido = Edge sem comando remoto
  * }} input
  * @returns {Promise<{ revoked: boolean, ran: string[], results: Record<string, any> }>}
  */
@@ -36,6 +39,7 @@ export async function runOnce({
   intervals,
   random,
   biometricProvider: provider,
+  commands,
 }) {
   const iv = { ...DEFAULT_INTERVALS, ...intervals };
   const due = (k, ms) => last[k] === undefined || now.getTime() - last[k] >= ms;
@@ -59,6 +63,12 @@ export async function runOnce({
       out.results.biometricErasure = await runBiometricErasures({ store, transport, provider });
       if (out.results.biometricErasure.status === 'revoked') return { ...out, revoked: true };
     }
+  }
+  if (commands && due('commands', iv.commandsMs)) {
+    out.ran.push('commands');
+    last.commands = now.getTime();
+    out.results.commands = await pollAndRunCommands({ store, transport, now, ...commands });
+    if (out.results.commands.status === 'revoked') return { ...out, revoked: true };
   }
   if (due('drain', iv.drainMs)) {
     out.ran.push('drain');

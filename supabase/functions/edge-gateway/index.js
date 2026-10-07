@@ -11,4 +11,11 @@ const admin = createClient(
 );
 const allow = createRateLimiter();
 
-Deno.serve((req) => handle(req, { rpc: (name, args) => admin.rpc(name, args), allow }));
+// COMMAND_MASTER_KEY (64 hex) assina os comandos de dispositivo; sem ela o gateway nao entrega comandos (D-021).
+Deno.serve((req) =>
+  handle(req, {
+    rpc: (name, args) => admin.rpc(name, args),
+    allow,
+    commandMasterKey: Deno.env.get('COMMAND_MASTER_KEY') ?? '',
+  }),
+);
