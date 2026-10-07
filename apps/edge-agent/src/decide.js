@@ -61,6 +61,14 @@ function resolveCredential(store, index, tenantId, cred, now, cfg) {
       });
     return none('pin:mismatch');
   }
+  if (cred?.type === 'biometric' && typeof cred.personId === 'string') {
+    // O perfil ativo aponta para a credencial biométrica; a verificação em si vem pronta em `input.biometric`.
+    const profile = index.biometricProfileByPerson.get(cred.personId);
+    const credential = profile
+      ? (index.biometricCredentialById.get(profile.credentialId) ?? null)
+      : null;
+    return { credential: credential?.personId === cred.personId ? credential : null, steps: [] };
+  }
   return none('credential:unsupported');
 }
 
@@ -69,10 +77,11 @@ function resolveCredential(store, index, tenantId, cred, now, cfg) {
  * @param {{
  *   store: ReturnType<import('./store.js').openStore>,
  *   accessPointId: string,
- *   credential: { type: 'pin', personId: string, pin: string } | { type: 'card', number: string } | { type: 'mobile_token', token: string },
+ *   credential: { type: 'biometric', personId: string } | { type: 'pin', personId: string, pin: string } | { type: 'card', number: string } | { type: 'mobile_token', token: string },
  *   now: Date,
  *   offline?: boolean,                 // padrão true: sem confirmação de que a nuvem está acessível
  *   emergencyActive?: boolean,
+ *   biometric?: { accepted: boolean, reasonCode: string },  // resultado de verifyBiometricAttempt; ausente = recusa
  *   device?: { trusted: boolean } | null,
  *   config?: Partial<typeof DEFAULT_CONFIG>,
  *   newId?: () => string,
@@ -138,8 +147,10 @@ export function processAccessAttempt(input) {
             personId: credential.personId,
             status: credential.status,
             expiresAt: credential.expiresAt,
+            ...(credential.type === 'biometric' ? { kind: 'biometric' } : {}),
           }
         : null,
+      biometric: input.biometric,
       person: person ? { id: person.id, status: person.status } : null,
       groupIds: person ? (index.groupsByPerson.get(person.id) ?? []) : [],
       policies: snap?.policies ?? [],
@@ -158,7 +169,17 @@ export function processAccessAttempt(input) {
       antiPassback: apb ? { mode: apb.mode, violated: apb.violated } : undefined,
     });
     const clockSteps = clock.status === 'ok' ? [] : [`clock:${clock.status}`];
-    for (const s of [...credSteps, ...(stale && offline ? ['cache:stale'] : []), ...clockSteps])
+    // Sem credencial biométrica resolvida (ex.: sem perfil ativo) o motor não vê `kind`; registra o motivo da recusa.
+    const bioSteps =
+      input.credential?.type === 'biometric' && !credential && input.biometric
+        ? [`biometric:${input.biometric.reasonCode}`]
+        : [];
+    for (const s of [
+      ...credSteps,
+      ...bioSteps,
+      ...(stale && offline ? ['cache:stale'] : []),
+      ...clockSteps,
+    ])
       decision.evidence.steps.push(s);
 
     // Presença só avança quando a porta de fato libera (soft grava mesmo violando; hard não).

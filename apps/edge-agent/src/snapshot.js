@@ -24,6 +24,16 @@ export function validateSnapshot(s) {
     if (typeof s[k] !== 'string' || !s[k]) fail(`${k} ausente`);
   for (const k of ARRAYS) if (!Array.isArray(s[k])) fail(`${k} ausente`);
   if (s.visits !== undefined && !Array.isArray(s.visits)) fail('visits malformado'); // ausente = snapshot antigo
+  if (s.biometric !== undefined) {
+    const b = s.biometric;
+    if (
+      !b ||
+      typeof b !== 'object' ||
+      !Array.isArray(b.profiles) ||
+      !Array.isArray(b.pendingErasure)
+    )
+      fail('biometric malformado'); // ausente = snapshot antigo (biometria fica recusada)
+  }
   try {
     new Intl.DateTimeFormat('en-US', { timeZone: s.timezone });
   } catch {
@@ -33,7 +43,7 @@ export function validateSnapshot(s) {
   for (const ap of s.accessPoints)
     if (!ap.id || !zoneIds.has(ap.zoneId)) fail('ponto sem zona do sítio');
   for (const c of s.credentials) {
-    if (!c.id || !c.personId || !['pin', 'card', 'mobile_token'].includes(c.type))
+    if (!c.id || !c.personId || !['pin', 'card', 'mobile_token', 'biometric'].includes(c.type))
       fail('credencial malformada');
     if (c.type === 'pin' && !c.secretHash) fail('PIN sem hash');
   }
@@ -70,10 +80,22 @@ export function buildIndex(snapshot) {
   }
   const pinByPerson = new Map();
   for (const c of snapshot.credentials) if (c.type === 'pin') pinByPerson.set(c.personId, c);
+  // Biometria: só o perfil ATIVO e a credencial a que ele pertence; sem `biometric` no snapshot nada é aceito.
+  const bio = snapshot.biometric ?? null;
+  const biometricProfileByPerson = new Map(
+    (bio?.profiles ?? []).filter((p) => p.status === 'active').map((p) => [p.personId, p]),
+  );
+  const biometricCredentialById = new Map(
+    snapshot.credentials.filter((c) => c.type === 'biometric').map((c) => [c.id, c]),
+  );
   const visitByPerson = new Map((snapshot.visits ?? []).map((v) => [v.personId, v]));
   return {
     snapshot,
     visitByPerson,
+    biometricSettings: bio?.settings ?? null,
+    biometricProfileByPerson,
+    biometricCredentialById,
+    biometricPendingErasure: bio?.pendingErasure ?? [],
     zones: new Map(snapshot.zones.map((z) => [z.id, z])),
     points: new Map(snapshot.accessPoints.map((p) => [p.id, p])),
     people: new Map(snapshot.people.map((p) => [p.id, p])),

@@ -29,6 +29,9 @@ importers:
 
   apps/edge-agent:
     dependencies:
+      '@zela/biometrics':
+        specifier: workspace:*
+        version: link:../../packages/biometrics
       '@zela/device-drivers':
         specifier: workspace:*
         version: link:../../packages/device-drivers

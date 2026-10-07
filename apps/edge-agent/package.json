@@ -11,6 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@zela/biometrics": "workspace:*",
     "@zela/device-drivers": "workspace:*",
     "@zela/domain": "workspace:*",
     "bcryptjs": "^3.0.2"

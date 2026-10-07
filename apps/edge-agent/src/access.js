@@ -6,6 +6,7 @@
 
 import { randomUUID } from 'node:crypto';
 import { toPhysicalOutcomeParams } from '@zela/domain';
+import { verifyBiometricAttempt } from './biometric.js';
 import { processAccessAttempt } from './decide.js';
 
 export const DEFAULT_UNLOCK_MS = 5_000;
@@ -14,12 +15,22 @@ export const DEFAULT_UNLOCK_MS = 5_000;
  * @param {Parameters<typeof processAccessAttempt>[0] & {
  *   driver: import('@zela/device-drivers').HardwareDriver,
  *   unlockMs?: number,
+ *   biometricProvider?: import('@zela/biometrics').BiometricProvider,
  * }} input
  * @returns {Promise<ReturnType<typeof processAccessAttempt> & { actuation: { attempted: boolean, ok: boolean, code: string } }>}
  */
 export async function handleAccessAttempt(input) {
-  const { driver, unlockMs = DEFAULT_UNLOCK_MS, ...attempt } = input;
+  const { driver, unlockMs = DEFAULT_UNLOCK_MS, biometricProvider, ...attempt } = input;
   const newId = attempt.newId ?? randomUUID;
+  // A verificação biométrica é assíncrona (provedor) e acontece ANTES da decisão síncrona/atômica.
+  if (attempt.credential?.type === 'biometric')
+    attempt.biometric = await verifyBiometricAttempt({
+      store: attempt.store,
+      personId: attempt.credential.personId,
+      accessPointId: attempt.accessPointId,
+      now: attempt.now,
+      provider: biometricProvider,
+    });
   const result = processAccessAttempt(attempt);
   if (!result.open)
     return { ...result, actuation: { attempted: false, ok: false, code: 'NOT_OPENED' } };

@@ -33,6 +33,7 @@ export const MIN_SAFE_THRESHOLD = 0.8;
  * @property {string} kind identificador do provedor (ex.: 'mock')
  * @property {BiometricCapabilities} capabilities `liveness` só é true se o motor realmente oferece prova de vida
  * @property {(probe: BiometricProbe) => Promise<BiometricResult>} verify
+ * @property {(subjectRef: string) => Promise<{ ok: boolean }>} [erase] apaga o gabarito no provedor (fila de eliminação, LGPD)
  */
 
 /**

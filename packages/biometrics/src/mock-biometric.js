@@ -15,6 +15,8 @@ export function createMockBiometricProvider({ liveness = true, env } = {}) {
     kind: 'mock',
     capabilities: { liveness, engine: 'mock', engineVersion: '0' },
     calls: 0,
+    /** Referências cujo gabarito foi apagado (simulação). */
+    erased: /** @type {string[]} */ ([]),
     /** Enfileira os próximos resultados; sem fila, devolve NO_MATCH (fail-closed). */
     script(...results) {
       queue.push(...results);
@@ -24,6 +26,11 @@ export function createMockBiometricProvider({ liveness = true, env } = {}) {
       if (!probe || typeof probe.subjectRef !== 'string' || !probe.subjectRef)
         return { status: 'ERROR', score: 0, liveness: 'UNSUPPORTED', error: 'UNAVAILABLE' };
       return queue.shift() ?? { status: 'NO_MATCH', score: 0, liveness: live };
+    },
+    async erase(subjectRef) {
+      if (typeof subjectRef !== 'string' || !subjectRef) return { ok: false };
+      provider.erased.push(subjectRef);
+      return { ok: true };
     },
   };
   return provider;
