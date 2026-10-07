@@ -5,3 +5,7 @@ export * from './credentials.js';
 export * from './schedule.js';
 export * from './access-point.js';
 export * from './policy.js';
+export * from './access-contracts.js';
+export * from './access-engine.js';
+export * from './access-event.js';
+export * from './antipassback.js';
