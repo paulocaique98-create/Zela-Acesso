@@ -99,18 +99,18 @@ describe('contrato x migration 3C', () => {
   it('códigos de motivo e decisões do JS são exatamente os do CHECK do banco', async () => {
     const { readFileSync } = await import('node:fs');
     const { ACCESS_REASON_CODES, ACCESS_DECISIONS } = await import('./access-contracts.js');
-    const sql = readFileSync(
-      new URL(
-        '../../../supabase/migrations/20261015120000_phase3c_access_events.sql',
-        import.meta.url,
-      ),
-      'utf8',
-    );
+    const mig = (f) =>
+      readFileSync(new URL(`../../../supabase/migrations/${f}`, import.meta.url), 'utf8');
+    const sql = mig('20261015120000_phase3c_access_events.sql');
+    // A lista de motivos vigente é a da migration mais recente que a redefine (7B amplia o CHECK).
+    const reasonSql = mig('20261025120000_phase7b_biometric_reason.sql');
     const list = (re) =>
       [...(re.exec(sql)?.[1] ?? '').matchAll(/'([A-Z_]+)'/g)].map((m) => m[1]).sort();
-    expect(list(/reason_code in \(([^;]*?)\)\),\s*person_id/)).toEqual(
-      [...ACCESS_REASON_CODES].sort(),
-    );
+    expect(
+      [...(/reason_code in \(([^;]*?)\)\);/.exec(reasonSql)?.[1] ?? '').matchAll(/'([A-Z_]+)'/g)]
+        .map((m) => m[1])
+        .sort(),
+    ).toEqual([...ACCESS_REASON_CODES].sort());
     expect(list(/decision in \(([^)]*)\)\),\s*reason_code/)).toEqual([...ACCESS_DECISIONS].sort());
   });
 });

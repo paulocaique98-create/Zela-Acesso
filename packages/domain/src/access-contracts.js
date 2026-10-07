@@ -21,6 +21,7 @@ export const ACCESS_REASON_CODES = [
   'OFFLINE_POLICY_DENY',
   'OFFLINE_POLICY_ALLOW',
   'CONTEXT_INVALID',
+  'BIOMETRIC_REJECTED',
 ];
 
 /** @typedef {'ALLOW' | 'DENY' | 'CHALLENGE' | 'DEGRADED_ALLOW' | 'DEGRADED_DENY'} AccessDecisionKind */
@@ -36,7 +37,7 @@ export const ACCESS_REASON_CODES = [
  *                  emergencyBehavior: 'fail_safe' | 'fail_secure',
  *                  offlineBehavior: 'degraded_deny' | 'degraded_allow' },
  *   credential: { id: string, personId: string, status: 'active' | 'suspended' | 'revoked',
- *                 expiresAt?: Date | string | null } | null,
+ *                 expiresAt?: Date | string | null, kind?: string } | null,   // kind 'biometric' exige `biometric`
  *   person: { id: string, status: 'active' | 'inactive' | 'blocked' } | null,
  *   groupIds: readonly string[],
  *   policies: readonly import('./policy.js').AccessPolicy[],
@@ -48,6 +49,7 @@ export const ACCESS_REASON_CODES = [
  *   visit?: { state: 'active' | 'expired' | 'revoked', allowedZoneIds: readonly string[],
  *             validFrom?: Date | string | null, validUntil?: Date | string | null } | null,
  *   challengeSatisfied?: boolean,
+ *   biometric?: { accepted: boolean, reasonCode: string } | null,  // resultado de evaluateBiometric (@zela/biometrics), calculado pelo chamador
  * }} AccessContext
  */
 

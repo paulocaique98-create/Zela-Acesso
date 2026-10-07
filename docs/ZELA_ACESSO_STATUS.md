@@ -104,6 +104,8 @@ Código convertido de TypeScript para JS/JSX (D-017). Reexecutado depois da conv
 
 - **Fase 7A (contrato BiometricProvider + Mock) IMPLEMENTADA e TESTADA local (07/10/2026), parcial** — novo pacote `packages/biometrics` (`evaluateBiometric` fail-closed: desligada por padrão, limiar mínimo 0,80, liveness exigido nunca assumido, códigos `BIOMETRIC_*` estáveis; `createMockBiometricProvider` recusa produção; Vitest 11 PASS; lint ok). Sem imagem/gabarito no pacote. **PENDENTE**: ler o Guia ANPD de Biometria na íntegra e parecer jurídico (matriz 07), `consent_record`/retenção/exclusão (LGPD), integração ao `evaluateAccess` (CHALLENGE/credencial biométrica), tabela de perfil biométrico com RLS, tela de cadastro guiado, benchmark do `@vladmandic/human` (D-007). Nenhum provider real.
 
+- **Fase 7B (biometria no motor) IMPLEMENTADA e TESTADA local (07/10/2026), parcial** — `evaluateAccess` nega credencial `kind:'biometric'` sem `ctx.biometric.accepted === true` (novo motivo estável `BIOMETRIC_REJECTED`; motivo `BIOMETRIC_*` nos passos da evidência); migration `20261025120000_phase7b_biometric_reason.sql` amplia o CHECK de `access_events`. Vitest domain 217 PASS, pgTAP 17 arquivos/786 PASS, lint ok. O chamador ainda precisa montar `ctx.biometric` com `evaluateBiometric` (Edge/Edge Function: NÃO feito). `db:reset` acusou storage "unhealthy" (migrations aplicadas, pgTAP ok; não investigado). Demais pendências da 7A seguem abertas.
+
 ## Próximo
 Notificação global (badge/push) da Operação, se o dono quiser; Fase 7B+ (itens pendentes acima) ou Fase 8 (hardware real); emissor/chave de comando e 4E. Antes: decisão do dono.
 - Regra permanente: Zela Escola (`Projeto_Zela`) protegido.

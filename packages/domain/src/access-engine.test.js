@@ -44,6 +44,42 @@ const ctx = (over = {}) => ({
 
 const ap = (o) => ({ ...ctx().accessPoint, ...o });
 
+describe('evaluateAccess — credencial biométrica', () => {
+  const bio = { id: 'c1', personId: 'p1', status: 'active', expiresAt: null, kind: 'biometric' };
+  it('libera quando a verificação foi aceita', () => {
+    const d = evaluateAccess(
+      ctx({ credential: bio, biometric: { accepted: true, reasonCode: 'BIOMETRIC_MATCH' } }),
+    );
+    expect(d.decision).toBe('ALLOW');
+    expect(d.evidence.steps).toContain('biometric:BIOMETRIC_MATCH');
+  });
+  it('nega sem verificação, recusada ou malformada (fail-closed)', () => {
+    for (const biometric of [
+      undefined,
+      null,
+      { accepted: false, reasonCode: 'BIOMETRIC_LOW_CONFIDENCE' },
+      { accepted: 'true', reasonCode: 'X' },
+    ]) {
+      const d = evaluateAccess(ctx({ credential: bio, biometric }));
+      expect(d).toMatchObject({ decision: 'DENY', reasonCode: 'BIOMETRIC_REJECTED' });
+    }
+  });
+  it('não afeta credenciais não biométricas', () => {
+    expect(evaluateAccess(ctx({ biometric: { accepted: false, reasonCode: 'X' } })).decision).toBe(
+      'ALLOW',
+    );
+  });
+  it('credencial inválida continua vencendo a biometria', () => {
+    const d = evaluateAccess(
+      ctx({
+        credential: { ...bio, status: 'revoked' },
+        biometric: { accepted: true, reasonCode: 'BIOMETRIC_MATCH' },
+      }),
+    );
+    expect(d.reasonCode).toBe('CREDENTIAL_INVALID');
+  });
+});
+
 describe('evaluateAccess', () => {
   it('libera com política vigente (POLICY_MATCH) e preenche a evidência', () => {
     const d = evaluateAccess(ctx());

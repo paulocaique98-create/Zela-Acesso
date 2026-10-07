@@ -1,7 +1,7 @@
 // Motor de decisão de acesso (Fase 3B). Determinístico, puro, sem I/O, sem relógio, sem IA.
 // Falha fechada: contexto inválido ou erro interno => DENY/CONTEXT_INVALID (nunca abre por engano).
 // Precedência (a primeira que decide, vence): emergência > ponto/dispositivo > credencial > pessoa >
-// visita > políticas/janelas > desafio > anti-passback > modo offline.
+// biometria > visita > políticas/janelas > desafio > anti-passback > modo offline.
 
 import { evaluatePolicies } from './policy.js';
 import { evaluateSchedule } from './schedule.js';
@@ -79,6 +79,13 @@ export function evaluateAccess(ctx) {
     // 4. Pessoa (e vínculo credencial-pessoa).
     if (!ctx.person || ctx.person.id !== cred.personId) return out('DENY', 'CREDENTIAL_INVALID');
     if (ctx.person.status !== 'active') return out('DENY', 'PERSON_DISABLED');
+
+    // 4b. Credencial biométrica: só vale com verificação aceita (ausente/recusada/duvidosa => nega).
+    // O motivo detalhado (BIOMETRIC_*) vai nos passos da evidência, sem dado biométrico.
+    if (cred.kind === 'biometric') {
+      steps.push(`biometric:${ctx.biometric?.reasonCode ?? 'MISSING'}`);
+      if (ctx.biometric?.accepted !== true) return out('DENY', 'BIOMETRIC_REJECTED');
+    }
 
     // 5. Visita (quando a pessoa está em visita).
     if (ctx.visit) {
