@@ -18,6 +18,12 @@ Grep/Glob antes de Read; trechos de 80–150 linhas; não reler arquivo já anal
 - Zela Escola (`Projeto_Zela`) é protegido: nunca `supabase stop`, `docker compose down`, `docker system prune`, remoção de volumes/containers dele. Antes de comando Docker/Supabase destrutivo: identificar alvo e confirmar que é `zela-acesso-local`.
 - Supabase local: `project_id = "zela-acesso-local"`, portas 55xxx. Nunca `link`, `db push`, `functions deploy`, `secrets set` ou `db reset --linked` em desenvolvimento. Nunca copiar `.env`/chaves do Zela Escola.
 
+## Docker Desktop (quando ligar / desligar)
+- **Ligar** (esperar "Engine running", depois `supabase start` na pasta do projeto) para: testes pgTAP/RLS/cross-tenant, aplicar/criar migrations locais, subir o app com dados reais, Playwright/E2E, `rbac:drift` se consultar o banco.
+- **Pode ficar desligado** para: editar `packages/domain`, Vitest unitário, documentação, revisão de código, planejamento.
+- **Desligar**: `supabase stop` na pasta do Zela Acesso, depois fechar o Docker Desktop. Nunca `docker compose down`/`prune`/remover volumes (compartilha o Docker com o Zela Escola).
+- Erro de conexão em tarefa de banco = Docker desligado ou `supabase start` não executado. Ao iniciar tarefa que exige banco com Docker off, avisar o usuário em vez de contornar.
+
 ## Stack
 React 19 + Vite 8 + Tailwind v4, **JavaScript/JSX sem TypeScript** (tipos documentados com JSDoc nos contratos de domínio); Supabase (Postgres, Auth, Storage, Realtime, Edge Functions/Deno) com RLS; Edge Agent local segue em Node (D-005); pnpm monorepo; Vitest; Playwright; lint/format/CI. Sem `tsc`: a segurança de tipos vem de testes, RLS e do check `rbac:drift`. Fixar versões só após verificar compatibilidade.
 
