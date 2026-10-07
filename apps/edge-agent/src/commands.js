@@ -51,7 +51,7 @@ const isIso = (s) => typeof s === 'string' && !Number.isNaN(Date.parse(s));
  * @param {{
  *   store: ReturnType<import('./store.js').openStore>,
  *   driver: import('@zela/device-drivers').HardwareDriver,
- *   key: string | Buffer,
+ *   key: string | Buffer | Array<string | Buffer>, // lista = rotação (atual + anterior)
  *   agentId: string,
  *   now: Date,
  *   command: unknown,
@@ -83,9 +83,16 @@ export async function handleCommand({ store, driver, key, agentId, now, command,
 
   if (c.agent_id !== agentId) return reject('WRONG_AGENT');
 
-  const expected = createHmac('sha256', key).update(canonicalCommand(c)).digest();
+  // Rotação da mestra: o agente aceita a chave atual e a anterior (lista) até concluir a troca. Testa todas, sem curto-circuito.
   const given = /^[0-9a-f]{64}$/.test(c.signature) ? Buffer.from(c.signature, 'hex') : null;
-  if (!given || !timingSafeEqual(given, expected)) return reject('BAD_SIGNATURE');
+  const canonical = canonicalCommand(c);
+  const keys = (Array.isArray(key) ? key : [key]).filter((k) => k && k.length > 0);
+  let valid = false;
+  for (const k of keys) {
+    const expected = createHmac('sha256', k).update(canonical).digest();
+    if (given && timingSafeEqual(given, expected)) valid = true;
+  }
+  if (!valid) return reject('BAD_SIGNATURE');
 
   const issued = Date.parse(c.issued_at);
   const expires = Date.parse(c.expires_at);

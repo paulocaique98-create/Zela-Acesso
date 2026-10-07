@@ -511,8 +511,75 @@ function AccessPointForm({ point, sites, zones, schedules, tenantId, onDone }) {
   );
 }
 
+const COMMAND_STATUS_LABEL = {
+  pending: 'Aguardando o agente',
+  delivered: 'Entregue ao agente',
+  executed: 'Executado',
+  failed: 'Falhou',
+  rejected: 'Rejeitado pelo agente',
+  expired: 'Expirado',
+};
+
+const UNLOCK_ERRORS = {
+  no_agent: 'Não há agente Edge ativo neste local para executar o comando.',
+  busy: 'Já existe uma abertura em andamento neste ponto. Aguarde o resultado.',
+  invalid_command: 'Dados do comando inválidos ou ponto inativo.',
+};
+
+/** Pedido de abertura remota: o banco registra e audita; o agente Edge verifica a assinatura e aciona o ponto. */
+function UnlockForm({ point, onDone }) {
+  const [busy, setBusy] = useState(false);
+  const [reason, setReason] = useState('');
+  const submit = async (e) => {
+    e.preventDefault();
+    setBusy(true);
+    const { error } = await supabase.rpc('request_device_command', {
+      p_access_point: point.id,
+      p_action: 'unlock',
+      p_duration_ms: null,
+      p_reason: reason.trim(),
+    });
+    setBusy(false);
+    if (error) {
+      return toast.error(
+        UNLOCK_ERRORS[error.message] ??
+          safeMessage(error, 'Não foi possível enviar o pedido de abertura.'),
+      );
+    }
+    toast.success('Pedido enviado. O resultado aparece em "Comandos recentes".');
+    onDone();
+  };
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <p className="text-sm text-on-surface-variant">
+        Abertura remota de <strong>{point.name}</strong>. O pedido fica registrado na auditoria com
+        o seu usuário e o motivo, e vale por poucos segundos após a entrega ao agente.
+      </p>
+      <Field label="Motivo (3 a 300 caracteres)">
+        <input
+          className={INPUT}
+          required
+          minLength={3}
+          maxLength={300}
+          value={reason}
+          onChange={(e) => setReason(e.target.value)}
+        />
+      </Field>
+      <div className="flex justify-end gap-2">
+        <button type="button" className={BTN_GHOST} onClick={onDone}>
+          Cancelar
+        </button>
+        <button type="submit" className={BTN_PRIMARY} disabled={busy || reason.trim().length < 3}>
+          {busy ? 'Enviando…' : 'Abrir ponto'}
+        </button>
+      </div>
+    </form>
+  );
+}
+
 export function AccessPointsPage() {
   const { current, allowed, allowedInAnyScope } = useWorkspace();
+  const [unlocking, setUnlocking] = useState(/** @type {any} */ (null));
   const [editing, setEditing] = useState(/** @type {any} */ (null));
   const [deleting, setDeleting] = useState(/** @type {any} */ (null));
   const q = useQuery(async () => {
@@ -541,10 +608,24 @@ export function AccessPointsPage() {
         .limit(500),
     ]);
     for (const r of [p, z, s]) if (r.error) throw r.error;
+    // Quem não tem device:command recebe lista vazia pela RLS; falha aqui não derruba a página.
+    const cmd = await supabase
+      .from('device_commands')
+      .select('id, access_point_id, status, reason, result_code, requested_at')
+      .eq('tenant_id', tenantId)
+      .order('requested_at', { ascending: false })
+      .limit(10);
     // Quem gerencia pontos mas não lê janelas (sem schedule:read) segue sem o seletor de janela.
-    return { points: p.data, zones: z.data, sites: s.data, schedules: sc.error ? [] : sc.data };
+    return {
+      points: p.data,
+      zones: z.data,
+      sites: s.data,
+      schedules: sc.error ? [] : sc.data,
+      commands: cmd.error ? [] : cmd.data,
+    };
   }, [current?.id]);
   const done = () => {
+    setUnlocking(null);
     setEditing(null);
     setDeleting(null);
     q.reload();
@@ -557,7 +638,8 @@ export function AccessPointsPage() {
         onNew={() => setEditing({})}
       >
         <Status q={q}>
-          {({ points, zones, sites, schedules }) => {
+          {({ points, zones, sites, schedules, commands }) => {
+            const pointName = new Map(points.map((p) => [p.id, p.name]));
             const siteName = new Map(sites.map((s) => [s.id, s.name]));
             const zoneName = new Map(zones.map((z) => [z.id, z.name]));
             const scheduleName = new Map(schedules.map((s) => [s.id, s.name]));
@@ -588,9 +670,38 @@ export function AccessPointsPage() {
                       canDelete={allowed('access_point:delete', p.site_id)}
                       onEdit={() => setEditing(p)}
                       onDelete={() => setDeleting(p)}
+                      extra={
+                        p.status === 'active' && allowed('device:command', p.site_id) ? (
+                          <button
+                            type="button"
+                            className={BTN_GHOST}
+                            onClick={() => setUnlocking(p)}
+                          >
+                            Abrir remotamente
+                          </button>
+                        ) : null
+                      }
                     />,
                   ])}
                 />
+                {commands.length > 0 && (
+                  <DataTable
+                    caption="Comandos recentes"
+                    headers={['Quando', 'Ponto', 'Motivo', 'Situação']}
+                    empty=""
+                    rows={commands.map((c) => [
+                      new Date(c.requested_at).toLocaleString('pt-BR'),
+                      pointName.get(c.access_point_id) ?? '—',
+                      c.reason,
+                      `${COMMAND_STATUS_LABEL[c.status] ?? c.status}${c.result_code ? ` (${c.result_code})` : ''}`,
+                    ])}
+                  />
+                )}
+                {unlocking && (
+                  <Modal title="Abrir ponto remotamente" onClose={done}>
+                    <UnlockForm point={unlocking} onDone={done} />
+                  </Modal>
+                )}
                 {editing && (
                   <Modal
                     title={editing.id ? 'Editar ponto de acesso' : 'Novo ponto de acesso'}

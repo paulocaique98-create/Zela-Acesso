@@ -51,6 +51,22 @@ describe('handleCommand', () => {
     expect(driver.getStatus('p1').locked).toBe(true);
   });
 
+  it('rotação: aceita assinatura da chave atual ou da anterior; rejeita chave fora da lista', async () => {
+    const { run, sign, base } = setup();
+    const keys = ['chave-nova', KEY];
+    expect((await run(sign(base, 'chave-nova'), { key: keys })).status).toBe('executed');
+    expect(
+      (await run(sign({ ...base, id: 'cmd-0000000000000002' }, KEY), { key: keys })).status,
+    ).toBe('executed');
+    const r = await run(sign({ ...base, id: 'cmd-0000000000000003' }, 'chave-revogada'), {
+      key: keys,
+    });
+    expect(r.code).toBe('BAD_SIGNATURE');
+    expect((await run(sign({ ...base, id: 'cmd-0000000000000004' }), { key: [] })).code).toBe(
+      'BAD_SIGNATURE',
+    );
+  });
+
   it('comando de outro agente é rejeitado', async () => {
     const { run, sign, base } = setup();
     expect((await run(sign({ ...base, agent_id: 'agent-B' }))).code).toBe('WRONG_AGENT');
