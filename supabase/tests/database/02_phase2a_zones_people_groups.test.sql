@@ -244,7 +244,7 @@ select lives_ok(
   'owner edita pessoa');
 select throws_ok(
   $$insert into public.people (tenant_id, full_name, kind)
-    values ('10000000-0000-0000-0000-00000000000a', 'X', 'visitor')$$,
+    values ('10000000-0000-0000-0000-00000000000a', 'X', 'alienigena')$$,
   '22P02', null, 'enum de tipo rejeita valor invalido');
 select throws_ok(
   $$insert into public.zones (tenant_id, site_id, name)

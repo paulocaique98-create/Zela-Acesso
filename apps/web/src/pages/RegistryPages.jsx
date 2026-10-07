@@ -19,6 +19,7 @@ const KIND_LABEL = {
   employee: 'Funcionário',
   resident: 'Morador',
   contractor: 'Terceirizado',
+  visitor: 'Visitante',
   other: 'Outro',
 };
 const AGE_LABEL = { adult: 'Adulto', minor: 'Menor de idade' };
