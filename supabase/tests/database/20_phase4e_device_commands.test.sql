@@ -65,8 +65,10 @@ reset role;
 
 -- ------------------------------------------------------------ pedido valido
 select tests.login('00000000-0000-0000-0000-0000000000a3');
-select throws_ok($$select public.request_device_command('50000000-0000-0000-0000-00000000000a', 'lock', null, 'trancar remoto')$$,
-  '22023', null, 'lock remoto nao existe nesta fase');
+select throws_ok($$select public.request_device_command('50000000-0000-0000-0000-00000000000a', 'lock', 3000, 'trancar remoto')$$,
+  '22023', null, 'lock nao aceita duracao');
+select throws_ok($$select public.request_device_command('50000000-0000-0000-0000-00000000000a', 'reboot', null, 'acao desconhecida')$$,
+  '22023', null, 'acao desconhecida recusada');
 select throws_ok($$select public.request_device_command('50000000-0000-0000-0000-00000000000a', 'unlock', 3000, 'x')$$,
   '22023', null, 'motivo obrigatorio');
 select throws_ok($$select public.request_device_command('50000000-0000-0000-0000-00000000000a', 'unlock', 999999, 'motivo valido')$$,
@@ -136,6 +138,22 @@ select is(jsonb_array_length(public.edge_claim_commands((select v::uuid from tes
   'pedido parado nao e entregue');
 reset role;
 select is((select status from public.device_commands where id = (select v::uuid from tests.vars where k = 'cmd2')), 'expired', 'pedido parado expira');
+
+-- ------------------------------------------------------------ lock remoto (fechamento da 4E)
+select tests.login('00000000-0000-0000-0000-0000000000a2');
+select throws_ok($$select public.request_device_command('50000000-0000-0000-0000-00000000000a', 'lock', null, 'trancar remoto')$$,
+  'P0002', null, 'recepcao nao tranca remotamente');
+reset role;
+select tests.login('00000000-0000-0000-0000-0000000000a3');
+insert into tests.vars select 'cmd3', public.request_device_command('50000000-0000-0000-0000-00000000000a', 'lock', null, 'trancar remoto')::text;
+select is((select action from public.device_commands where id = (select v::uuid from tests.vars where k = 'cmd3')), 'lock', 'lock registrado');
+select throws_ok($$select public.request_device_command('50000000-0000-0000-0000-00000000000a', 'unlock', null, 'abre durante o lock')$$,
+  '22023', null, 'um pedido em aberto por ponto vale tambem para lock');
+reset role;
+select is((select count(*)::int from public.audit_log where action = 'device_commands.request' and metadata->>'action' = 'lock'), 1, 'lock auditado');
+set local role service_role;
+select is((public.edge_claim_commands((select v::uuid from tests.vars where k='idA'), (select v from tests.vars where k='secA')))#>>'{0,action}', 'lock', 'agente recebe action=lock');
+reset role;
 
 select * from finish();
 rollback;

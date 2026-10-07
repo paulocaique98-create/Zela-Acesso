@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { DataTable } from '../components/DataTable';
 import { supabase } from '../lib/supabase';
 import { toast } from '../lib/toast';
@@ -522,12 +522,13 @@ const COMMAND_STATUS_LABEL = {
 
 const UNLOCK_ERRORS = {
   no_agent: 'Não há agente Edge ativo neste local para executar o comando.',
-  busy: 'Já existe uma abertura em andamento neste ponto. Aguarde o resultado.',
+  busy: 'Já existe um comando em andamento neste ponto. Aguarde o resultado.',
   invalid_command: 'Dados do comando inválidos ou ponto inativo.',
 };
 
-/** Pedido de abertura remota: o banco registra e audita; o agente Edge verifica a assinatura e aciona o ponto. */
-function UnlockForm({ point, onDone }) {
+/** Pedido de abertura/travamento remoto: o banco registra e audita; o agente Edge verifica a assinatura e aciona o ponto. */
+function CommandForm({ point, action, onDone }) {
+  const locking = action === 'lock';
   const [busy, setBusy] = useState(false);
   const [reason, setReason] = useState('');
   const submit = async (e) => {
@@ -535,15 +536,14 @@ function UnlockForm({ point, onDone }) {
     setBusy(true);
     const { error } = await supabase.rpc('request_device_command', {
       p_access_point: point.id,
-      p_action: 'unlock',
+      p_action: action,
       p_duration_ms: null,
       p_reason: reason.trim(),
     });
     setBusy(false);
     if (error) {
       return toast.error(
-        UNLOCK_ERRORS[error.message] ??
-          safeMessage(error, 'Não foi possível enviar o pedido de abertura.'),
+        UNLOCK_ERRORS[error.message] ?? safeMessage(error, 'Não foi possível enviar o pedido.'),
       );
     }
     toast.success('Pedido enviado. O resultado aparece em "Comandos recentes".');
@@ -552,8 +552,11 @@ function UnlockForm({ point, onDone }) {
   return (
     <form onSubmit={submit} className="space-y-3">
       <p className="text-sm text-on-surface-variant">
-        Abertura remota de <strong>{point.name}</strong>. O pedido fica registrado na auditoria com
-        o seu usuário e o motivo, e vale por poucos segundos após a entrega ao agente.
+        {locking ? 'Travamento remoto' : 'Abertura remota'} de <strong>{point.name}</strong>. O
+        pedido fica registrado na auditoria com o seu usuário e o motivo, e vale por poucos segundos
+        após a entrega ao agente.{' '}
+        {locking &&
+          'Travar não impede a saída: a saída livre depende do hardware do ponto, não deste comando.'}
       </p>
       <Field label="Motivo (3 a 300 caracteres)">
         <input
@@ -570,18 +573,30 @@ function UnlockForm({ point, onDone }) {
           Cancelar
         </button>
         <button type="submit" className={BTN_PRIMARY} disabled={busy || reason.trim().length < 3}>
-          {busy ? 'Enviando…' : 'Abrir ponto'}
+          {busy ? 'Enviando…' : locking ? 'Travar ponto' : 'Abrir ponto'}
         </button>
       </div>
     </form>
   );
 }
 
+const fetchRecentCommands = (tenantId) =>
+  supabase
+    .from('device_commands')
+    .select('id, access_point_id, action, status, reason, result_code, requested_at')
+    .eq('tenant_id', tenantId)
+    .order('requested_at', { ascending: false })
+    .limit(10);
+
+const COMMAND_ACTION_LABEL = { unlock: 'Abrir', lock: 'Travar' };
+const OPEN_COMMAND = ['pending', 'delivered'];
+
 export function AccessPointsPage() {
   const { current, allowed, allowedInAnyScope } = useWorkspace();
-  const [unlocking, setUnlocking] = useState(/** @type {any} */ (null));
+  const [commanding, setCommanding] = useState(/** @type {any} */ (null)); // { point, action }
   const [editing, setEditing] = useState(/** @type {any} */ (null));
   const [deleting, setDeleting] = useState(/** @type {any} */ (null));
+  const [freshCommands, setFreshCommands] = useState(/** @type {any} */ (null));
   const q = useQuery(async () => {
     const tenantId = current?.id ?? '';
     const [p, z, s, sc] = await Promise.all([
@@ -609,12 +624,7 @@ export function AccessPointsPage() {
     ]);
     for (const r of [p, z, s]) if (r.error) throw r.error;
     // Quem não tem device:command recebe lista vazia pela RLS; falha aqui não derruba a página.
-    const cmd = await supabase
-      .from('device_commands')
-      .select('id, access_point_id, status, reason, result_code, requested_at')
-      .eq('tenant_id', tenantId)
-      .order('requested_at', { ascending: false })
-      .limit(10);
+    const cmd = await fetchRecentCommands(tenantId);
     // Quem gerencia pontos mas não lê janelas (sem schedule:read) segue sem o seletor de janela.
     return {
       points: p.data,
@@ -624,8 +634,20 @@ export function AccessPointsPage() {
       commands: cmd.error ? [] : cmd.data,
     };
   }, [current?.id]);
+  // Enquanto houver comando em aberto, atualiza só a lista de comandos (sem recarregar a página nem fechar o modal).
+  const shown = freshCommands ?? q.data?.commands ?? [];
+  const hasOpen = shown.some((c) => OPEN_COMMAND.includes(c.status));
+  useEffect(() => {
+    if (!hasOpen) return undefined;
+    const t = setInterval(async () => {
+      const r = await fetchRecentCommands(current?.id ?? '');
+      if (!r.error) setFreshCommands(r.data);
+    }, 4000);
+    return () => clearInterval(t);
+  }, [hasOpen, current?.id]);
   const done = () => {
-    setUnlocking(null);
+    setFreshCommands(null);
+    setCommanding(null);
     setEditing(null);
     setDeleting(null);
     q.reload();
@@ -638,7 +660,7 @@ export function AccessPointsPage() {
         onNew={() => setEditing({})}
       >
         <Status q={q}>
-          {({ points, zones, sites, schedules, commands }) => {
+          {({ points, zones, sites, schedules }) => {
             const pointName = new Map(points.map((p) => [p.id, p.name]));
             const siteName = new Map(sites.map((s) => [s.id, s.name]));
             const zoneName = new Map(zones.map((z) => [z.id, z.name]));
@@ -672,34 +694,55 @@ export function AccessPointsPage() {
                       onDelete={() => setDeleting(p)}
                       extra={
                         p.status === 'active' && allowed('device:command', p.site_id) ? (
-                          <button
-                            type="button"
-                            className={BTN_GHOST}
-                            onClick={() => setUnlocking(p)}
-                          >
-                            Abrir remotamente
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              className={BTN_GHOST}
+                              onClick={() => setCommanding({ point: p, action: 'unlock' })}
+                            >
+                              Abrir remotamente
+                            </button>
+                            <button
+                              type="button"
+                              className={BTN_GHOST}
+                              onClick={() => setCommanding({ point: p, action: 'lock' })}
+                            >
+                              Travar remotamente
+                            </button>
+                          </>
                         ) : null
                       }
                     />,
                   ])}
                 />
-                {commands.length > 0 && (
+                {shown.length > 0 && (
                   <DataTable
                     caption="Comandos recentes"
-                    headers={['Quando', 'Ponto', 'Motivo', 'Situação']}
+                    headers={['Quando', 'Ponto', 'Ação', 'Motivo', 'Situação']}
                     empty=""
-                    rows={commands.map((c) => [
+                    rows={shown.map((c) => [
                       new Date(c.requested_at).toLocaleString('pt-BR'),
                       pointName.get(c.access_point_id) ?? '—',
+                      COMMAND_ACTION_LABEL[c.action] ?? c.action,
                       c.reason,
                       `${COMMAND_STATUS_LABEL[c.status] ?? c.status}${c.result_code ? ` (${c.result_code})` : ''}`,
                     ])}
                   />
                 )}
-                {unlocking && (
-                  <Modal title="Abrir ponto remotamente" onClose={done}>
-                    <UnlockForm point={unlocking} onDone={done} />
+                {commanding && (
+                  <Modal
+                    title={
+                      commanding.action === 'lock'
+                        ? 'Travar ponto remotamente'
+                        : 'Abrir ponto remotamente'
+                    }
+                    onClose={done}
+                  >
+                    <CommandForm
+                      point={commanding.point}
+                      action={commanding.action}
+                      onDone={done}
+                    />
                   </Modal>
                 )}
                 {editing && (

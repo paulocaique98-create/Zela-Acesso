@@ -44,6 +44,8 @@ const fakeRpc = (rows) =>
 
 const setup = async (rows) => {
   const store = openStore();
+  store.setMeta('clock_drift_s', '0'); // relógio verificado pelo heartbeat
+  store.setMeta('clock_checked_at', NOW.toISOString());
   const driver = createMockHardware({ points: [POINT], now: NOW, env: 'test' });
   const key = await deriveCommandKey(MASTER, AGENT);
   const rpc = fakeRpc(rows);
@@ -77,6 +79,20 @@ describe('pollAndRunCommands (gateway real + verificador do agente)', () => {
     const r = await run({ key: await deriveCommandKey(MASTER, 'outro-agente') });
     expect(r.results[0]).toMatchObject({ status: 'rejected', code: 'BAD_SIGNATURE' });
     expect(driver.getStatus(POINT).locked).toBe(true);
+  });
+
+  it('relógio não confiável: unlock é recusado (CLOCK_UNTRUSTED) sem consumir o id; lock segue', async () => {
+    const { run, driver, store } = await setup([
+      claimed(cid(7)),
+      { ...claimed(cid(8)), action: 'lock', durationMs: null },
+    ]);
+    store.setMeta('clock_drift_s', '900');
+    const r = await run();
+    expect(r.results[0]).toMatchObject({ status: 'rejected', code: 'CLOCK_UNTRUSTED' });
+    expect(driver.getStatus(POINT).locked).toBe(true);
+    expect(r.results[1]).toMatchObject({ status: 'executed', code: 'OK' });
+    store.setMeta('clock_drift_s', '0');
+    expect((await run()).results[0]).toMatchObject({ status: 'executed' }); // mesmo id do unlock ainda não foi consumido
   });
 
   it('replay do mesmo id é rejeitado', async () => {

@@ -3,9 +3,11 @@
 // Dados sintéticos em organização `e2e-edge-*`, apagada ao final (mesmo se uma verificação falhar).
 //   node apps/edge-agent/e2e/device-command.e2e.mjs
 // Pré-requisito: `supabase start` com edge-runtime e COMMAND_MASTER_KEY (env ou supabase/.env, ignorado pelo git).
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import assert from 'node:assert/strict';
 import { createMockHardware } from '@zela/device-drivers';
 import { deriveCommandKey } from '../../../supabase/functions/edge-gateway/handler.js';
@@ -67,14 +69,15 @@ commit;
 }
 
 const UUID_LINE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
-const requestUnlock = (reason) =>
+const requestCommand = (action, reason) =>
   psql(`begin;
 ${asOwner}
-select public.request_device_command('${T.point}', 'unlock', 3000, '${reason}');
+select public.request_device_command('${T.point}', '${action}', ${action === 'lock' ? 'null' : '3000'}, '${reason}');
 commit;`)
     .split(/\r?\n/)
     .map((l) => l.trim())
     .find((l) => UUID_LINE.test(l));
+const requestUnlock = (reason) => requestCommand('unlock', reason);
 const cmdStatus = (cmd) =>
   psql(
     `select status || '|' || coalesce(result_code, '') from public.device_commands where id = '${cmd}';`,
@@ -155,6 +158,15 @@ try {
     assert.equal(r2.results.commands.results.length, 0),
   );
 
+  // lock remoto (fechamento da 4E): assinado, entregue uma vez, trava e reporta
+  assert.equal(driver.getStatus(T.point).locked, false);
+  const cmdLock = requestCommand('lock', 'reafirmar trava');
+  await round();
+  check('lock remoto: agente trava o ponto e a nuvem registra executed/OK', () => {
+    assert.equal(driver.getStatus(T.point).locked, true);
+    assert.equal(cmdStatus(cmdLock), 'executed|OK');
+  });
+
   // Chave errada no agente (ex.: agente reconfigurado com a chave de outro): rejeita e a nuvem fica sabendo.
   await driver.lock(T.point);
   const cmd2 = requestUnlock('segundo pedido');
@@ -166,6 +178,59 @@ try {
   check('nuvem registra rejected/BAD_SIGNATURE', () =>
     assert.equal(cmdStatus(cmd2), 'rejected|BAD_SIGNATURE'),
   );
+
+  // Rotação da mestra: o agente aceita a chave nova E a anterior (o gateway ainda assina com a anterior).
+  await driver.lock(T.point);
+  const newMasterKey = await deriveCommandKey('f'.repeat(64), agentId);
+  const cmd3 = requestUnlock('rotacao: gateway ainda na mestra antiga');
+  const r4 = await round([newMasterKey, key]);
+  check('rotação: agente com [nova, anterior] aceita a assinatura da mestra anterior', () => {
+    assert.equal(r4.results.commands.results[0].status, 'executed');
+    assert.equal(driver.getStatus(T.point).locked, false);
+  });
+  check('rotação: nuvem registra executed/OK', () => assert.equal(cmdStatus(cmd3), 'executed|OK'));
+  await driver.lock(T.point);
+  const cmd4 = requestUnlock('rotacao: agente so com a chave nova');
+  const r5 = await round([newMasterKey]);
+  check('rotação: agente só com a nova rejeita a assinatura da mestra anterior', () => {
+    assert.equal(r5.results.commands.results[0].code, 'BAD_SIGNATURE');
+    assert.equal(driver.getStatus(T.point).locked, true);
+  });
+  check('rotação: nuvem registra rejected/BAD_SIGNATURE', () =>
+    assert.equal(cmdStatus(cmd4), 'rejected|BAD_SIGNATURE'),
+  );
+
+  // Daemon real (main.js) com configuração só por ambiente: abre via Mock e reporta.
+  const cmd5 = requestUnlock('daemon: abertura remota');
+  const child = spawn('node', ['apps/edge-agent/src/main.js'], {
+    env: {
+      PATH: process.env.PATH,
+      EDGE_GATEWAY_URL: GATEWAY,
+      EDGE_AGENT_ID: agentId,
+      EDGE_AGENT_SECRET: secret,
+      EDGE_DB_PATH: join(tmpdir(), `zela-e2e-${agentId}.sqlite`),
+      EDGE_DRIVER: 'mock',
+      EDGE_MOCK_POINTS: T.point,
+      EDGE_COMMAND_KEY: key,
+      EDGE_COMMAND_KEY_PREVIOUS: newMasterKey,
+      EDGE_TICK_MS: '500',
+    },
+    stdio: 'ignore',
+  });
+  try {
+    const until = Date.now() + 30_000;
+    while (Date.now() < until && cmdStatus(cmd5) !== 'executed|OK')
+      await new Promise((r) => setTimeout(r, 1000));
+    check('daemon (main.js) executa o comando e reporta executed/OK', () =>
+      assert.equal(cmdStatus(cmd5), 'executed|OK'),
+    );
+  } finally {
+    const exited = new Promise((r) => child.once('exit', r));
+    child.kill();
+    await exited;
+    for (const ext of ['', '-wal', '-shm'])
+      rmSync(join(tmpdir(), `zela-e2e-${agentId}.sqlite${ext}`), { force: true });
+  }
 } catch (e) {
   failed = true;
   results.push(['FAIL', `exceção: ${e.message}`]);

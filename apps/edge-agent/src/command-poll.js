@@ -1,7 +1,10 @@
 // Comandos remotos (Fase 4E): busca os pedidos assinados no gateway, passa cada um por `handleCommand` (assinatura,
 // agente, validade, anti-replay) e reporta o resultado. Falha de rede = offline; o pedido expira na nuvem (30 s) e o
 // operador emite outro. Falha ao reportar não desfaz a execução (o id já foi consumido).
+// Relógio não confiável (deriva alta ou nunca verificada): a janela de validade não pode ser julgada, então `unlock`
+// é recusado (CLOCK_UNTRUSTED, sem consumir o id); `lock` segue, pois só reafirma o estado travado.
 
+import { loadClockStatus } from './clock.js';
 import { handleCommand } from './commands.js';
 
 /**
@@ -21,11 +24,15 @@ export async function pollAndRunCommands({ store, transport, driver, key, agentI
   }
   const list = Array.isArray(res?.commands) ? res.commands : [];
   const results = [];
+  const clockUntrusted = loadClockStatus(store, now).status === 'untrusted';
   for (const command of list) {
-    const r = await handleCommand({ store, driver, key, agentId, now, command }).catch(() => ({
-      status: /** @type {const} */ ('failed'),
-      code: 'DRIVER_ERROR',
-    }));
+    const gated = clockUntrusted && command?.action !== 'lock';
+    const r = await (gated
+      ? Promise.resolve({ status: /** @type {const} */ ('rejected'), code: 'CLOCK_UNTRUSTED' })
+      : handleCommand({ store, driver, key, agentId, now, command }).catch(() => ({
+          status: /** @type {const} */ ('failed'),
+          code: 'DRIVER_ERROR',
+        })));
     let reported = false;
     try {
       const ack = await transport.reportCommandResult(command?.id, r.status, r.code);

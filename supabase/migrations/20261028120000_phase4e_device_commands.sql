@@ -1,7 +1,7 @@
 -- Fase 4E: emissor de comandos de dispositivo (D-021). A nuvem registra o PEDIDO do operador (auditado, por escopo de
 -- site); a assinatura HMAC e feita no edge-gateway (a chave mestra nunca entra no banco). O agente busca os pedidos,
 -- verifica a assinatura (apps/edge-agent/src/commands.js), aciona o HAL e devolve o resultado.
--- Nesta fase so existe `unlock` remoto: `lock` remoto pode impedir saida segura e fica PENDENTE de decisao.
+-- Nesta fase so existe `unlock`; o `lock` remoto veio em 20261029120000_phase4e_remote_lock.sql.
 
 insert into public.role_permissions (role, permission) values
   ('organization_owner', 'device:command'),
