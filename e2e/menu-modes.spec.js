@@ -17,7 +17,7 @@ test.describe('menu Cadastro e Gerenciar (UI)', () => {
   test('Cadastro abre o formulario e nao edita; Gerenciar edita e nao cria', async ({ page }) => {
     await loginOk(page, 'alfa.dono@example.test');
 
-    await openMenu(page, 'Cadastro', 'Cadastrar pessoa');
+    await openMenu(page, 'Cadastro', 'Pessoa');
     await expect(page.getByRole('heading', { name: 'Cadastro · Pessoas' })).toBeVisible();
     await expect(page.getByRole('dialog', { name: 'Nova pessoa' })).toBeVisible();
     await page.getByRole('button', { name: 'Fechar' }).click();
@@ -34,7 +34,7 @@ test.describe('menu Cadastro e Gerenciar (UI)', () => {
 
   test('Cadastro de local abre o formulario com o campo do Zela Pass', async ({ page }) => {
     await loginOk(page, 'alfa.dono@example.test');
-    await openMenu(page, 'Cadastro', 'Cadastrar local');
+    await openMenu(page, 'Cadastro', 'Local');
     await expect(page.getByRole('dialog', { name: 'Novo local' })).toBeVisible();
     await expect(page.getByLabel('Endereço do Zela Pass (opcional)')).toBeVisible();
   });
