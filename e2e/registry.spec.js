@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginOk } from './helpers.js';
+import { goMenu, loginOk } from './helpers.js';
 
 // Cadastro de zonas, pessoas e grupos pela UI (organizacao Alfa do seed). Cada teste apaga o que criou.
 const stamp = Date.now();
@@ -16,21 +16,21 @@ test.describe('cadastros da Fase 2A (UI)', () => {
     await loginOk(page, 'alfa.dono@example.test');
 
     // Pessoa
-    await page.getByRole('link', { name: 'Pessoas' }).click();
+    await goMenu(page, { name: 'Pessoas' });
     await page.getByRole('button', { name: 'Novo' }).click();
     await page.getByLabel('Nome completo').fill(PERSON);
     await page.getByRole('button', { name: 'Salvar' }).click();
     await expect(page.getByRole('cell', { name: PERSON })).toBeVisible();
 
     // Zona
-    await page.getByRole('link', { name: 'Zonas' }).click();
+    await goMenu(page, { name: 'Zonas' });
     await page.getByRole('button', { name: 'Novo' }).click();
     await page.getByLabel('Nome').fill(ZONE);
     await page.getByRole('button', { name: 'Salvar' }).click();
     await expect(page.getByRole('cell', { name: ZONE })).toBeVisible();
 
     // Grupo + membro
-    await page.getByRole('link', { name: 'Grupos' }).click();
+    await goMenu(page, { name: 'Grupos' });
     await page.getByRole('button', { name: 'Novo' }).click();
     await page.getByLabel('Nome').fill(GROUP);
     await page.getByRole('button', { name: 'Salvar' }).click();
@@ -51,7 +51,7 @@ test.describe('cadastros da Fase 2A (UI)', () => {
       ['Zonas', ZONE],
       ['Grupos', GROUP],
     ]) {
-      await other.getByRole('link', { name: link }).click();
+      await goMenu(other, { name: link });
       await expect(other.getByRole('heading', { name: link })).toBeVisible();
       await expect(other.getByText(name)).toHaveCount(0);
     }
@@ -63,7 +63,7 @@ test.describe('cadastros da Fase 2A (UI)', () => {
       ['Zonas', ZONE, 'zona'],
       ['Pessoas', PERSON, 'pessoa'],
     ]) {
-      await page.getByRole('link', { name: link }).click();
+      await goMenu(page, { name: link });
       await page
         .getByRole('row', { name: new RegExp(name) })
         .getByRole('button', { name: 'Excluir' })
@@ -82,7 +82,7 @@ test.describe('cadastros da Fase 2A (UI)', () => {
     const name = `Pessoa Cred E2E ${stamp}`;
     const PIN = '482915';
     await loginOk(page, 'alfa.dono@example.test');
-    await page.getByRole('link', { name: 'Pessoas' }).click();
+    await goMenu(page, { name: 'Pessoas' });
     await page.getByRole('button', { name: 'Novo' }).click();
     await page.getByLabel('Nome completo').fill(name);
     await page.getByRole('button', { name: 'Salvar' }).click();
@@ -143,7 +143,7 @@ test.describe('cadastros da Fase 2A (UI)', () => {
     await loginOk(page, 'alfa.dono@example.test');
 
     // calendario + feriado
-    await page.getByRole('link', { name: 'Feriados', exact: true }).click();
+    await goMenu(page, { name: 'Feriados', exact: true });
     await page.getByRole('button', { name: 'Novo' }).click();
     await page.getByLabel('Nome do calendário').fill(cal);
     await page.getByRole('button', { name: 'Salvar' }).click();
@@ -157,7 +157,7 @@ test.describe('cadastros da Fase 2A (UI)', () => {
     await page.getByRole('button', { name: 'Fechar', exact: true }).click();
 
     // regra com janelas seg-sex 07:30-18:30
-    await page.getByRole('link', { name: 'Janelas de acesso' }).click();
+    await goMenu(page, { name: 'Janelas de acesso' });
     await page.getByRole('button', { name: 'Novo' }).click();
     await page.getByLabel('Nome', { exact: true }).fill(sch);
     await page.getByLabel('Calendário de feriados (opcional)').selectOption({ label: cal });
@@ -196,7 +196,7 @@ test.describe('cadastros da Fase 2A (UI)', () => {
     await expect(tz).toHaveValue('America/Sao_Paulo');
 
     // calendario em uso nao pode ser apagado
-    await page.getByRole('link', { name: 'Feriados', exact: true }).click();
+    await goMenu(page, { name: 'Feriados', exact: true });
     await page
       .getByRole('row', { name: new RegExp(cal) })
       .getByRole('button', { name: 'Excluir' })
@@ -217,16 +217,16 @@ test.describe('cadastros da Fase 2A (UI)', () => {
     const ctx = await browser.newContext();
     const other = await ctx.newPage();
     await loginOk(other, 'beta.dono@example.test');
-    await other.getByRole('link', { name: 'Janelas de acesso' }).click();
+    await goMenu(other, { name: 'Janelas de acesso' });
     await expect(other.getByRole('heading', { name: 'Janelas de acesso' })).toBeVisible();
     await expect(other.getByText(sch)).toHaveCount(0);
-    await other.getByRole('link', { name: 'Feriados', exact: true }).click();
+    await goMenu(other, { name: 'Feriados', exact: true });
     await expect(other.getByRole('heading', { name: 'Feriados' })).toBeVisible();
     await expect(other.getByText(cal)).toHaveCount(0);
     await ctx.close();
 
     // limpeza: regra primeiro, depois calendario
-    await page.getByRole('link', { name: 'Janelas de acesso' }).click();
+    await goMenu(page, { name: 'Janelas de acesso' });
     await page
       .getByRole('row', { name: new RegExp(sch) })
       .getByRole('button', { name: 'Excluir' })
@@ -236,7 +236,7 @@ test.describe('cadastros da Fase 2A (UI)', () => {
       .getByRole('button', { name: 'Excluir' })
       .click();
     await expect(page.getByRole('cell', { name: sch })).toHaveCount(0);
-    await page.getByRole('link', { name: 'Feriados', exact: true }).click();
+    await goMenu(page, { name: 'Feriados', exact: true });
     await page
       .getByRole('row', { name: new RegExp(cal) })
       .getByRole('button', { name: 'Excluir' })

@@ -1,21 +1,14 @@
+import { useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import {
   Building2,
-  CalendarClock,
-  CalendarDays,
+  ChevronDown,
   Code2,
-  DoorOpen,
-  Fingerprint,
-  Landmark,
-  Layers,
   LayoutDashboard,
   LifeBuoy,
-  ScrollText,
+  Settings,
   ShieldCheck,
   Siren,
-  UserCheck,
-  UserRound,
-  Users,
   UsersRound,
 } from 'lucide-react';
 import { BRAND } from '../brand';
@@ -26,55 +19,127 @@ import { PasswordGate } from './PasswordGate';
 import { ShellFrame } from './ShellFrame';
 
 // siteLevel: recurso por site, visivel a quem tem a permissao em qualquer escopo (RLS filtra as linhas).
-/** @type {{ to: string, label: string, icon: import('react').ElementType, permission: import('@zela/domain').Permission | null, siteLevel?: boolean }[]} */
+// Menu = assunto; submenus so do mesmo assunto. Grupo sem submenu visivel some; com um so vira item direto.
+/** @typedef {{ to: string, label: string, permission: import('@zela/domain').Permission | null, siteLevel?: boolean }} NavLeaf */
+/** @type {({ label: string, icon: import('react').ElementType, children: NavLeaf[] } | (NavLeaf & { icon: import('react').ElementType }))[]} */
 const NAV = [
   { to: '/', label: 'Visão geral', icon: LayoutDashboard, permission: null },
-  { to: '/sites', label: 'Locais', icon: Building2, permission: 'site:read', siteLevel: true },
   {
-    to: '/predios',
-    label: 'Prédios e andares',
-    icon: Landmark,
-    permission: 'zone:read',
-    siteLevel: true,
+    label: 'Locais e estrutura',
+    icon: Building2,
+    children: [
+      { to: '/sites', label: 'Locais', permission: 'site:read', siteLevel: true },
+      { to: '/predios', label: 'Prédios e andares', permission: 'zone:read', siteLevel: true },
+      { to: '/zonas', label: 'Zonas', permission: 'zone:read', siteLevel: true },
+      {
+        to: '/pontos',
+        label: 'Pontos de acesso',
+        permission: 'access_point:read',
+        siteLevel: true,
+      },
+    ],
   },
-  { to: '/zonas', label: 'Zonas', icon: Layers, permission: 'zone:read', siteLevel: true },
   {
-    to: '/pontos',
-    label: 'Pontos de acesso',
-    icon: DoorOpen,
-    permission: 'access_point:read',
-    siteLevel: true,
+    label: 'Pessoas',
+    icon: UsersRound,
+    children: [
+      { to: '/pessoas', label: 'Pessoas', permission: 'person:read' },
+      { to: '/grupos', label: 'Grupos', permission: 'group:read' },
+      { to: '/biometria', label: 'Biometria', permission: 'biometric:read' },
+    ],
   },
-  { to: '/pessoas', label: 'Pessoas', icon: UserRound, permission: 'person:read' },
-  { to: '/grupos', label: 'Grupos', icon: UsersRound, permission: 'group:read' },
   {
-    to: '/politicas',
-    label: 'Políticas de acesso',
+    label: 'Regras de acesso',
     icon: ShieldCheck,
-    permission: 'policy:read',
-    siteLevel: true,
+    children: [
+      {
+        to: '/politicas',
+        label: 'Políticas de acesso',
+        permission: 'policy:read',
+        siteLevel: true,
+      },
+      { to: '/janelas', label: 'Janelas de acesso', permission: 'schedule:read' },
+      { to: '/feriados', label: 'Feriados', permission: 'schedule:read' },
+    ],
   },
   {
-    to: '/operacao',
-    label: 'Operação',
+    label: 'Portaria e operação',
     icon: Siren,
-    permission: 'alert:read',
-    siteLevel: true,
+    children: [
+      {
+        to: '/operacao',
+        label: 'Alertas e ocorrências',
+        permission: 'alert:read',
+        siteLevel: true,
+      },
+      { to: '/visitantes', label: 'Visitantes', permission: 'visit:read', siteLevel: true },
+    ],
   },
   {
-    to: '/visitantes',
-    label: 'Visitantes',
-    icon: UserCheck,
-    permission: 'visit:read',
-    siteLevel: true,
+    label: 'Administração',
+    icon: Settings,
+    children: [
+      { to: '/membros', label: 'Membros e papéis', permission: 'member:read' },
+      { to: '/auditoria', label: 'Auditoria', permission: 'audit:read' },
+    ],
   },
-  { to: '/biometria', label: 'Biometria', icon: Fingerprint, permission: 'biometric:read' },
-  { to: '/janelas', label: 'Janelas de acesso', icon: CalendarClock, permission: 'schedule:read' },
-  { to: '/feriados', label: 'Feriados', icon: CalendarDays, permission: 'schedule:read' },
-  { to: '/membros', label: 'Membros', icon: Users, permission: 'member:read' },
-  { to: '/auditoria', label: 'Auditoria', icon: ScrollText, permission: 'audit:read' },
   { to: '/suporte', label: 'Suporte', icon: LifeBuoy, permission: 'support:read' },
 ];
+
+// Celular: icone + seta abre uma lista propria, presa a borda da tela (o <select> nativo abria fora da tela).
+function MobileTenantMenu({ tenants, currentId, onSelect }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="sm:hidden">
+      <button
+        type="button"
+        aria-label="Organização"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-9 items-center gap-1 rounded-zela-md border border-outline-variant/60 bg-surface-container-lowest px-2 text-on-surface-variant shadow-sm"
+      >
+        <Building2 size={18} aria-hidden="true" />
+        <ChevronDown size={16} aria-hidden="true" />
+      </button>
+      {open && (
+        <>
+          <button
+            type="button"
+            aria-label="Fechar lista de organizações"
+            tabIndex={-1}
+            onClick={() => setOpen(false)}
+            className="fixed inset-0 z-40 cursor-default"
+          />
+          <ul
+            role="listbox"
+            aria-label="Organização"
+            className="fixed top-[56px] right-4 z-50 max-h-[60vh] w-max max-w-[calc(100vw-2rem)] overflow-y-auto rounded-zela-md border border-outline-variant bg-surface-container-low p-1 shadow-lg"
+          >
+            {tenants.map((t) => (
+              <li key={t.id} role="option" aria-selected={t.id === currentId}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onSelect(t.id);
+                    setOpen(false);
+                  }}
+                  className={`block w-full rounded-zela-sm px-3 py-2 text-left text-sm break-words ${
+                    t.id === currentId
+                      ? 'bg-primary/10 font-semibold text-primary'
+                      : 'text-on-surface hover:bg-surface-container-high'
+                  }`}
+                >
+                  {t.name}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
 
 export function AppShell() {
   const { session, loading } = useAuth();
@@ -85,11 +150,16 @@ export function AppShell() {
   // Admin de plataforma sem organizacao: o lugar dele e o Painel do Desenvolvedor.
   if (!ws.error && !ws.current && ws.platformRole) return <Navigate to="/plataforma" replace />;
 
-  const items = NAV.filter(
-    (n) =>
-      n.permission === null ||
-      (n.siteLevel ? ws.allowedInAnyScope(n.permission) : ws.allowed(n.permission)),
-  );
+  const can = (n) =>
+    n.permission === null ||
+    (n.siteLevel ? ws.allowedInAnyScope(n.permission) : ws.allowed(n.permission));
+  const items = NAV.flatMap((n) => {
+    if (!n.children) return can(n) ? [n] : [];
+    const kids = n.children.filter(can);
+    if (kids.length === 0) return [];
+    if (kids.length === 1) return [{ ...kids[0], icon: n.icon }];
+    return [{ label: n.label, icon: n.icon, children: kids }];
+  });
   if (ws.platformRole) {
     items.push({ to: '/plataforma', label: 'Painel do Desenvolvedor', icon: Code2 });
   }
@@ -100,11 +170,17 @@ export function AppShell() {
         <label htmlFor="tenant" className="hidden text-caption text-on-surface-variant sm:block">
           Organização
         </label>
+        <MobileTenantMenu
+          tenants={ws.tenants}
+          currentId={ws.current?.id}
+          onSelect={ws.selectTenant}
+        />
         <select
           id="tenant"
+          aria-label="Organização"
           value={ws.current?.id ?? ''}
           onChange={(e) => ws.selectTenant(e.target.value)}
-          className="max-w-[40vw] rounded-zela-md border border-outline-variant/60 bg-surface-container-lowest px-3 py-1.5 text-label text-on-surface shadow-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10"
+          className="hidden max-w-[40vw] rounded-zela-md border border-outline-variant/60 bg-surface-container-lowest px-3 py-1.5 text-label text-on-surface shadow-sm outline-none focus:border-primary focus:ring-4 focus:ring-primary/10 sm:block"
         >
           {ws.tenants.map((t) => (
             <option key={t.id} value={t.id}>

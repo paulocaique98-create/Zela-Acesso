@@ -5,6 +5,7 @@
 // O emissor (assinatura na nuvem) e a distribuição da chave de comando ao agente são PENDENTES.
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { isKid, kidOf, publicKeyOf, signMessage, verifyMessage } from './keys.js';
 
 export const COMMAND_ACTIONS = ['unlock', 'lock'];
 export const COMMAND_LIMITS = {
@@ -34,12 +35,37 @@ export function canonicalCommand(c) {
   ]);
 }
 
+/**
+ * v2 (D-022): Ed25519 com `kid`. O kid entra na forma canônica: trocar o kid invalida a assinatura.
+ * @param {SignedCommand & { kid: string }} c
+ */
+export function canonicalCommandV2(c) {
+  return JSON.stringify([
+    2,
+    c.kid,
+    c.id,
+    c.agent_id,
+    c.action,
+    c.point_id,
+    c.duration_ms ?? null,
+    c.issued_at,
+    c.expires_at,
+  ]);
+}
+
 /** @param {Omit<SignedCommand, 'signature'>} cmd @param {string | Buffer} key */
 export function signCommand(cmd, key) {
   const signature = createHmac('sha256', key)
     .update(canonicalCommand(/** @type {SignedCommand} */ (cmd)))
     .digest('hex');
   return { ...cmd, signature };
+}
+
+/** Assina v2 (uso em teste e no script de operador; na nuvem a assinatura é feita com WebCrypto no gateway). */
+export function signCommandV2(cmd, privateKeyB64) {
+  const kid = kidOf(publicKeyOf(privateKeyB64));
+  const body = { ...cmd, v: 2, kid };
+  return { ...body, signature: signMessage(canonicalCommandV2(body), privateKeyB64) };
 }
 
 const isIso = (s) => typeof s === 'string' && !Number.isNaN(Date.parse(s));
@@ -51,7 +77,8 @@ const isIso = (s) => typeof s === 'string' && !Number.isNaN(Date.parse(s));
  * @param {{
  *   store: ReturnType<import('./store.js').openStore>,
  *   driver: import('@zela/device-drivers').HardwareDriver,
- *   key: string | Buffer | Array<string | Buffer>, // lista = rotação (atual + anterior)
+ *   key?: string | Buffer | Array<string | Buffer>, // v1 (HMAC, legado); lista = rotação (atual + anterior)
+ *   publicKeys?: Record<string, string>, // v2: kid -> chave pública Ed25519 (hex) confiável
  *   agentId: string,
  *   now: Date,
  *   command: unknown,
@@ -59,15 +86,26 @@ const isIso = (s) => typeof s === 'string' && !Number.isNaN(Date.parse(s));
  * }} input
  * @returns {Promise<{ status: 'executed' | 'failed' | 'rejected', code: string }>}
  */
-export async function handleCommand({ store, driver, key, agentId, now, command, limits }) {
+export async function handleCommand({
+  store,
+  driver,
+  key = [],
+  publicKeys = {},
+  agentId,
+  now,
+  command,
+  limits,
+}) {
   const lim = { ...COMMAND_LIMITS, ...limits };
   const reject = (code) => ({ status: /** @type {const} */ ('rejected'), code });
   const c = /** @type {any} */ (command);
+  const v2 = c?.v === 2;
 
   if (
     !c ||
     typeof c !== 'object' ||
-    c.v !== 1 ||
+    (c.v !== 1 && c.v !== 2) ||
+    (v2 && !isKid(c.kid)) ||
     typeof c.id !== 'string' ||
     !ID_RE.test(c.id) ||
     typeof c.agent_id !== 'string' ||
@@ -84,13 +122,19 @@ export async function handleCommand({ store, driver, key, agentId, now, command,
   if (c.agent_id !== agentId) return reject('WRONG_AGENT');
 
   // Rotação da mestra: o agente aceita a chave atual e a anterior (lista) até concluir a troca. Testa todas, sem curto-circuito.
-  const given = /^[0-9a-f]{64}$/.test(c.signature) ? Buffer.from(c.signature, 'hex') : null;
-  const canonical = canonicalCommand(c);
-  const keys = (Array.isArray(key) ? key : [key]).filter((k) => k && k.length > 0);
   let valid = false;
-  for (const k of keys) {
-    const expected = createHmac('sha256', k).update(canonical).digest();
-    if (given && timingSafeEqual(given, expected)) valid = true;
+  if (v2) {
+    // v2: o kid escolhe a chave pública; kid desconhecido/revogado = assinatura inválida (sem distinguir)
+    const pub = Object.hasOwn(publicKeys, c.kid) ? publicKeys[c.kid] : null;
+    valid = pub !== null && verifyMessage(canonicalCommandV2(c), c.signature, pub);
+  } else {
+    const given = /^[0-9a-f]{64}$/.test(c.signature) ? Buffer.from(c.signature, 'hex') : null;
+    const canonical = canonicalCommand(c);
+    const keys = (Array.isArray(key) ? key : [key]).filter((k) => k && k.length > 0);
+    for (const k of keys) {
+      const expected = createHmac('sha256', k).update(canonical).digest();
+      if (given && timingSafeEqual(given, expected)) valid = true;
+    }
   }
   if (!valid) return reject('BAD_SIGNATURE');
 

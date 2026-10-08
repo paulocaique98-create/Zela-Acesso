@@ -13,3 +13,21 @@
 | 8 | Hardware real (1 fabricante com documentação) | Teste de bancada documentado |
 | 9 | Hardening, backup/restore, DR | Security Audit + Adversarial Verify sem críticos |
 | 10–11 | Piloto controlado → RC | Critérios da Seção 58 do Prompt-Mestre |
+
+## Backlog de segurança (origem: Fase 9C, 07/10/2026)
+
+Lacunas expostas na revisão de `14-THREAT-MODEL.md`. Nenhuma está implementada; o risco residual de cada uma está no threat model. Ordem sugerida:
+
+| # | Item | Ameaça relacionada | Saída (gate) |
+|---|---|---|---|
+| 1 | ~~`pnpm audit` no CI~~ (feito 07/10/2026) | Supply chain | Passo no `ci.yml` falhando em vulnerabilidade alta/crítica |
+| 2 | ~~Cifragem em repouso do SQLite do Edge~~ (feito 07/10/2026; `EDGE_STORE_KEY`) | Roubo do cache offline | Teste que prova dado ilegível sem a chave; gestão da chave definida |
+| 3 | ~~Backup/restore e DR~~ (local feito 07/10/2026, `22-BACKUP-DR.md`; Storage e remoto pendentes) | Perda de dados, indisponibilidade | Procedimento escrito e restauração testada |
+| 4 | ~~Rotina agendada de `verify_access_chain` + alerta~~ (feito 07/10/2026: `scan_access_chains`; agente offline já existia; drift de relógio sem alerta) | Falsificação de evento, indisponibilidade, relógio | Alerta ao operador testado |
+| 5 | ~~Acesso JIT para suporte~~ (não necessário hoje: guarda de fronteira pgTAP `27`; reabrir se criarem suporte sobre dado do cliente) | Insider / suporte Arx | pgTAP: acesso expira e é auditado |
+| 6 | ~~mTLS/atestação de agente~~ (feito 08/10/2026 como chave de dispositivo assinando cada requisição, D-022; privada só protegida pelo SO) | Comprometimento de device | Teste com agente sem certificado recusado |
+| 7 | ~~`kid` na assinatura de comando e canal seguro de instalação da chave~~ (feito 08/10/2026, D-022: Ed25519, declarações endorse/revoke) | Injeção de comando físico | Rotação sem cópia manual |
+| 8 | ~~Verificar bucket/cifragem dos templates~~ (nuvem: só `template_ref`, guarda pgTAP `25`; cifragem no provedor real segue pendente, D-007) | Roubo de biometria | Evidência registrada (hoje "não verificado") |
+| 9 | ~~Rate limit global no `edge-gateway`~~ (feito 07/10/2026: `edge_rate_check`) | Abuso de API | Teste com múltiplas instâncias |
+| 10 | Revisão formal do checkpoint de segurança (§70) pelo dono, Security Audit + Adversarial Verify | Todas | Parecer sem críticos abertos |
+| 11 | Validação física de emergência (checklist de bombeiros da UF, `21-`) | Bloqueio de saída / config. de emergência | Teste em bancada documentado (Fase 8) |

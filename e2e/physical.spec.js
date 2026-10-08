@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginOk } from './helpers.js';
+import { goMenu, loginOk } from './helpers.js';
 
 // Fase 2C pela UI (organizacao Alfa do seed): predio, andar, zona com predio/andar e ponto de acesso.
 // O teste apaga tudo o que criou.
@@ -31,7 +31,7 @@ test.describe('hierarquia fisica e pontos de acesso (Fase 2C, UI)', () => {
     await loginOk(page, 'alfa.dono@example.test');
 
     // Predio + andar
-    await page.getByRole('link', { name: 'Prédios e andares' }).click();
+    await goMenu(page, { name: 'Prédios e andares' });
     await page.getByRole('button', { name: 'Novo' }).click();
     await page.getByLabel('Nome', { exact: true }).fill(BUILDING);
     await page.getByRole('button', { name: 'Salvar' }).click();
@@ -46,7 +46,7 @@ test.describe('hierarquia fisica e pontos de acesso (Fase 2C, UI)', () => {
     await expect(buildingRow.getByRole('cell', { name: '1', exact: true })).toBeVisible();
 
     // Zona com predio e andar
-    await page.getByRole('link', { name: 'Zonas', exact: true }).click();
+    await goMenu(page, { name: 'Zonas', exact: true });
     await page.getByRole('button', { name: 'Novo' }).click();
     await page.getByLabel('Nome', { exact: true }).fill(ZONE);
     await page.getByLabel('Prédio (opcional)').selectOption({ label: BUILDING });
@@ -59,7 +59,7 @@ test.describe('hierarquia fisica e pontos de acesso (Fase 2C, UI)', () => {
     ).toBeVisible();
 
     // Ponto de acesso: padrao seguro e aviso ao escolher fail-secure
-    await page.getByRole('link', { name: 'Pontos de acesso' }).click();
+    await goMenu(page, { name: 'Pontos de acesso' });
     await page.getByRole('button', { name: 'Novo' }).click();
     const form = page.getByRole('dialog', { name: 'Novo ponto de acesso' });
     await expect(form.getByLabel('Comportamento em emergência')).toHaveValue('fail_safe');
@@ -78,10 +78,10 @@ test.describe('hierarquia fisica e pontos de acesso (Fase 2C, UI)', () => {
     const ctx = await browser.newContext();
     const beta = await ctx.newPage();
     await loginOk(beta, 'beta.dono@example.test');
-    await beta.getByRole('link', { name: 'Pontos de acesso' }).click();
+    await goMenu(beta, { name: 'Pontos de acesso' });
     await expect(beta.getByRole('heading', { name: 'Pontos de acesso' })).toBeVisible();
     await expect(beta.getByText(POINT)).toHaveCount(0);
-    await beta.getByRole('link', { name: 'Prédios e andares' }).click();
+    await goMenu(beta, { name: 'Prédios e andares' });
     await expect(beta.getByText(BUILDING)).toHaveCount(0);
     await ctx.close();
 
@@ -94,7 +94,7 @@ test.describe('hierarquia fisica e pontos de acesso (Fase 2C, UI)', () => {
     const ctxR = await browser.newContext();
     const recep = await ctxR.newPage();
     await loginOk(recep, 'alfa.recepcao@example.test');
-    await recep.getByRole('link', { name: 'Pontos de acesso' }).click();
+    await goMenu(recep, { name: 'Pontos de acesso' });
     await expect(recep.getByRole('cell', { name: POINT })).toBeVisible();
     await expect(recep.getByRole('button', { name: 'Novo' })).toHaveCount(0);
     await expect(
@@ -103,7 +103,7 @@ test.describe('hierarquia fisica e pontos de acesso (Fase 2C, UI)', () => {
     await ctxR.close();
 
     // Zona com ponto nao pode ser apagada; limpeza em ordem inversa
-    await page.getByRole('link', { name: 'Zonas', exact: true }).click();
+    await goMenu(page, { name: 'Zonas', exact: true });
     await page
       .getByRole('row', { name: new RegExp(ZONE) })
       .getByRole('button', { name: 'Excluir' })
@@ -120,11 +120,11 @@ test.describe('hierarquia fisica e pontos de acesso (Fase 2C, UI)', () => {
       .getByRole('button', { name: 'Cancelar' })
       .click();
 
-    await page.getByRole('link', { name: 'Pontos de acesso' }).click();
+    await goMenu(page, { name: 'Pontos de acesso' });
     await removeRow(page, POINT, 'ponto de acesso');
-    await page.getByRole('link', { name: 'Zonas', exact: true }).click();
+    await goMenu(page, { name: 'Zonas', exact: true });
     await removeRow(page, ZONE, 'zona');
-    await page.getByRole('link', { name: 'Prédios e andares' }).click();
+    await goMenu(page, { name: 'Prédios e andares' });
     await page
       .getByRole('row', { name: new RegExp(BUILDING) })
       .getByRole('button', { name: 'Andares' })

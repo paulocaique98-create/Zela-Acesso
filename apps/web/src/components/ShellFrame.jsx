@@ -3,14 +3,15 @@ import { LogOut, Menu, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../auth/AuthProvider';
 import { useBranding } from '../hooks/useBranding';
 import { useSidebarExpanded } from '../hooks/useSidebarExpanded';
-import { SidebarItem, SidebarToggleButton } from './SidebarNav';
+import { SidebarGroup, SidebarItem, SidebarToggleButton } from './SidebarNav';
 
 /**
  * Casca visual compartilhada (header + menu lateral retratil).
  * @param {{
  *   title: string,
  *   subtitle?: string,
- *   items: { to: string, label: string, icon: import('react').ElementType, end?: boolean, badge?: number, disabled?: boolean }[],
+ *   items: ({ to: string, label: string, icon: import('react').ElementType, end?: boolean, badge?: number, disabled?: boolean }
+ *     | { label: string, icon: import('react').ElementType, children: { to: string, label: string, end?: boolean }[] })[],
  *   headerCenter?: import('react').ReactNode,
  *   children: import('react').ReactNode,
  * }} props
@@ -19,6 +20,8 @@ export function ShellFrame({ title, subtitle, items, headerCenter, children }) {
   const { signOut } = useAuth();
   const [isExpanded, toggleExpanded] = useSidebarExpanded();
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Acordeao do menu: no maximo um grupo aberto; comeca todos fechados.
+  const [openGroup, setOpenGroup] = useState(null);
   const { logo } = useBranding();
 
   return (
@@ -46,7 +49,7 @@ export function ShellFrame({ title, subtitle, items, headerCenter, children }) {
             )}
           </div>
           <h1 className="flex min-w-0 items-center gap-1.5 text-lg leading-none font-bold tracking-tight whitespace-nowrap text-on-surface">
-            {title}
+            <span className="truncate">{title}</span>
             {subtitle && (
               <span className="hidden font-normal text-on-surface-variant md:inline">
                 · {subtitle}
@@ -57,7 +60,7 @@ export function ShellFrame({ title, subtitle, items, headerCenter, children }) {
 
         {headerCenter}
 
-        <div className="flex flex-1 items-center justify-end">
+        <div className="flex shrink-0 items-center justify-end md:flex-1">
           <button
             type="button"
             onClick={() => void signOut()}
@@ -81,16 +84,30 @@ export function ShellFrame({ title, subtitle, items, headerCenter, children }) {
           >
             <ul className="flex flex-col gap-1">
               {items.map((n) => (
-                <li key={n.to + n.label}>
-                  <SidebarItem
-                    to={n.to}
-                    end={n.end}
-                    icon={n.icon}
-                    label={n.label}
-                    badge={n.badge}
-                    disabled={n.disabled}
-                    onNavigate={() => setMobileOpen(false)}
-                  />
+                <li key={n.to ?? n.label}>
+                  {n.children ? (
+                    <SidebarGroup
+                      label={n.label}
+                      icon={n.icon}
+                      items={n.children}
+                      open={openGroup === n.label}
+                      onToggle={() => setOpenGroup((g) => (g === n.label ? null : n.label))}
+                      onNavigate={() => {
+                        setOpenGroup(null);
+                        setMobileOpen(false);
+                      }}
+                    />
+                  ) : (
+                    <SidebarItem
+                      to={n.to}
+                      end={n.end}
+                      icon={n.icon}
+                      label={n.label}
+                      badge={n.badge}
+                      disabled={n.disabled}
+                      onNavigate={() => setMobileOpen(false)}
+                    />
+                  )}
                 </li>
               ))}
             </ul>

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginOk } from './helpers.js';
+import { goMenu, loginOk } from './helpers.js';
 
 // Fase 2D pela UI (organizacao Alfa do seed): politica grupo -> zona. O teste apaga tudo o que criou.
 const stamp = Date.now();
@@ -9,7 +9,7 @@ const POLICY = `Politica E2E ${stamp}`;
 
 /** @param {import('@playwright/test').Page} page @param {string} link @param {string} name @param {string} label */
 async function createNamed(page, link, name) {
-  await page.getByRole('link', { name: link, exact: true }).click();
+  await goMenu(page, { name: link, exact: true });
   await page.getByRole('button', { name: 'Novo' }).click();
   await page.getByLabel('Nome', { exact: true }).fill(name);
   await page.getByRole('button', { name: 'Salvar' }).click();
@@ -18,7 +18,7 @@ async function createNamed(page, link, name) {
 
 /** @param {import('@playwright/test').Page} page @param {string} link @param {string} name @param {string} label */
 async function removeNamed(page, link, name, label) {
-  await page.getByRole('link', { name: link, exact: true }).click();
+  await goMenu(page, { name: link, exact: true });
   await page
     .getByRole('row', { name: new RegExp(name) })
     .getByRole('button', { name: 'Excluir' })
@@ -40,7 +40,7 @@ test.describe('politicas de acesso (Fase 2D, UI)', () => {
     await createNamed(page, 'Zonas', ZONE);
     await createNamed(page, 'Grupos', GROUP);
 
-    await page.getByRole('link', { name: 'Políticas de acesso' }).click();
+    await goMenu(page, { name: 'Políticas de acesso' });
     await page.getByRole('button', { name: 'Novo' }).click();
     const form = page.getByRole('dialog', { name: 'Nova política' });
     await form.getByLabel('Nome', { exact: true }).fill(POLICY);
@@ -64,7 +64,7 @@ test.describe('politicas de acesso (Fase 2D, UI)', () => {
     const ctx = await browser.newContext();
     const beta = await ctx.newPage();
     await loginOk(beta, 'beta.dono@example.test');
-    await beta.getByRole('link', { name: 'Políticas de acesso' }).click();
+    await goMenu(beta, { name: 'Políticas de acesso' });
     await expect(beta.getByRole('heading', { name: 'Políticas de acesso' })).toBeVisible();
     await expect(beta.getByText(POLICY)).toHaveCount(0);
     await ctx.close();
@@ -78,7 +78,7 @@ test.describe('politicas de acesso (Fase 2D, UI)', () => {
     }
 
     // Grupo com politica nao pode ser apagado; limpeza em ordem inversa
-    await page.getByRole('link', { name: 'Grupos', exact: true }).click();
+    await goMenu(page, { name: 'Grupos', exact: true });
     await page
       .getByRole('row', { name: new RegExp(GROUP) })
       .getByRole('button', { name: 'Excluir' })

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { createTestOrg, localAdmin, loginOk } from './helpers.js';
+import { createTestOrg, localAdmin, loginOk, goMenu } from './helpers.js';
 
 // Fase 7C pela UI (organizacao de teste e2e-*, apagada pelo global-teardown): politica -> cadastro guiado ->
 // revogacao -> isolamento. Consentimentos sao append-only; a limpeza e o purge de tenants e2e-* (replica role).
@@ -22,7 +22,7 @@ test.describe('biometria: politica, consentimento e perfil (Fase 7C, UI)', () =>
 
     await loginOk(page, 'responsavel.teste@example.test');
     await page.locator('#tenant').selectOption({ label: org.name });
-    await page.getByRole('link', { name: 'Biometria' }).click();
+    await goMenu(page, { name: 'Biometria' });
     await expect(page.getByRole('heading', { name: 'Biometria', exact: true })).toBeVisible();
     await expect(page.getByText('Biometria desligada (padrão).')).toBeVisible();
 

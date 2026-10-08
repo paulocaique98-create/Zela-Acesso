@@ -386,6 +386,8 @@ deno_version = 2
 [edge_runtime.secrets]
 # Chave mestra dos comandos de dispositivo (D-021): vem do ambiente (supabase/.env, ignorado pelo git).
 COMMAND_MASTER_KEY = "env(COMMAND_MASTER_KEY)"
+# Chave Ed25519 (JWK) que assina comandos v2 com kid (D-022): gerada por `node scripts/command-key.mjs gen-signing`.
+COMMAND_SIGNING_JWK = "env(COMMAND_SIGNING_JWK)"
 
 [analytics]
 enabled = false

@@ -24,6 +24,7 @@ export const COMMAND_RESULT_CODES = [
   'TIMEOUT',
   'UNKNOWN_POINT',
   'INVALID_ARGUMENT',
+  'INTERLOCK_DENIED',
 ];
 
 export const MAX_UNLOCK_MS = 60_000;

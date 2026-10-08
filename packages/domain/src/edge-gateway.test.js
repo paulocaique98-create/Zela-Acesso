@@ -60,6 +60,19 @@ describe('edge-gateway', () => {
     expect(res.status).toBe(429);
   });
 
+  it('limite global = 429; falha do contador global não derruba o agente', async () => {
+    const rpc = rpcOk(null);
+    const denied = await handle(req({ op: 'snapshot' }), { rpc, allowGlobal: async () => false });
+    expect(denied.status).toBe(429);
+    const broken = await handle(req({ op: 'snapshot' }), {
+      rpc,
+      allowGlobal: async () => {
+        throw new Error('db fora');
+      },
+    });
+    expect(broken.status).not.toBe(429);
+  });
+
   describe('heartbeat', () => {
     it('repassa à RPC e devolve hora/deriva', async () => {
       const rpc = rpcOk([{ server_time: '2026-10-05T14:00:00Z', clock_drift_seconds: 3 }]);

@@ -108,3 +108,57 @@ export function toPhysicalOutcomeParams(input) {
     p_idempotency_key: input.idempotencyKey ?? null,
   };
 }
+
+const DEVICE_EVENT_RE = /^[A-Za-z0-9_.:-]{1,64}$/;
+
+/**
+ * Decisão tomada pelo PRÓPRIO terminal (modo Standalone, D-023/D-024): o motor `evaluateAccess` não a reavaliou, então a
+ * decisão é registrada como evidência do dispositivo (`DEVICE_LOCAL_ALLOW`/`DEVICE_LOCAL_DENY`) e nunca como `POLICY_MATCH`.
+ * Evidência por allowlist: identificador numérico do usuário NO terminal e do log, nunca cartão, PIN nem gabarito.
+ * @param {{
+ *   tenantId: string, siteId: string, occurredAt: Date | string, allowed: boolean,
+ *   accessPointId?: string | null, personId?: string | null, idempotencyKey: string,
+ *   device: { kind: string, event?: string | number | null, userId?: string | number | null, logId?: string | number | null, deviceTime?: number | null },
+ * }} input
+ * @returns {Record<string, unknown>} argumentos nomeados da RPC `record_access_event`
+ */
+export function toDeviceLocalDecisionParams(input) {
+  const { tenantId, siteId, occurredAt, device } = input;
+  if (!tenantId || !siteId) throw new Error('tenantId e siteId são obrigatórios');
+  if (typeof input.allowed !== 'boolean') throw new Error('allowed deve ser booleano');
+  if (!input.idempotencyKey) throw new Error('idempotencyKey é obrigatória');
+  if (!device || !DEVICE_EVENT_RE.test(String(device.kind)))
+    throw new Error('device.kind inválido');
+  const at = occurredAt instanceof Date ? occurredAt : new Date(occurredAt);
+  if (Number.isNaN(at.getTime())) throw new Error('occurredAt inválido');
+  const clean = (v) => (v == null || !DEVICE_EVENT_RE.test(String(v)) ? null : String(v));
+  const deviceTime = Number.isFinite(device.deviceTime) ? device.deviceTime : null;
+  return {
+    p_tenant: tenantId,
+    p_site: siteId,
+    p_event_type: 'access_decision',
+    p_occurred_at: at.toISOString(),
+    p_decision: input.allowed ? 'ALLOW' : 'DENY',
+    p_reason_code: input.allowed ? 'DEVICE_LOCAL_ALLOW' : 'DEVICE_LOCAL_DENY',
+    p_person: input.personId ?? null,
+    p_credential: null,
+    p_access_point: input.accessPointId ?? null,
+    p_zone: null,
+    p_policy: null,
+    p_physical_outcome: null,
+    p_source: 'EDGE_AGENT',
+    p_correlation: null,
+    p_evidence: {
+      deviceLocal: true,
+      device: {
+        kind: String(device.kind),
+        event: clean(device.event),
+        userId: clean(device.userId),
+        logId: clean(device.logId),
+        deviceTime,
+      },
+      steps: [],
+    },
+    p_idempotency_key: input.idempotencyKey,
+  };
+}

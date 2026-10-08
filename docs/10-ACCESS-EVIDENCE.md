@@ -12,7 +12,7 @@ Decisões: `ALLOW`, `DENY`, `CHALLENGE`, `DEGRADED_ALLOW`, `DEGRADED_DENY`. Abre
 
 Códigos de motivo (contrato estável: **nunca renomear nem reutilizar, só acrescentar**; o teste `access-event.test.js` trava a lista JS contra o CHECK do SQL):
 
-`POLICY_MATCH`, `POLICY_DENY`, `ZONE_NOT_ALLOWED`, `OUTSIDE_SCHEDULE`, `MULTI_FACTOR_REQUIRED`, `CREDENTIAL_INVALID`, `CREDENTIAL_EXPIRED`, `PERSON_DISABLED`, `VISITOR_EXPIRED`, `VISITOR_ZONE_NOT_ALLOWED`, `ANTI_PASSBACK`, `EMERGENCY_POLICY`, `DEVICE_UNTRUSTED`, `ACCESS_POINT_INACTIVE`, `OFFLINE_POLICY_DENY`, `OFFLINE_POLICY_ALLOW`, `CONTEXT_INVALID`, `BIOMETRIC_REJECTED` (7B; o motivo detalhado `BIOMETRIC_*` fica nos passos da evidência).
+`POLICY_MATCH`, `POLICY_DENY`, `ZONE_NOT_ALLOWED`, `OUTSIDE_SCHEDULE`, `MULTI_FACTOR_REQUIRED`, `CREDENTIAL_INVALID`, `CREDENTIAL_EXPIRED`, `PERSON_DISABLED`, `VISITOR_EXPIRED`, `VISITOR_ZONE_NOT_ALLOWED`, `ANTI_PASSBACK`, `EMERGENCY_POLICY`, `DEVICE_UNTRUSTED`, `ACCESS_POINT_INACTIVE`, `OFFLINE_POLICY_DENY`, `OFFLINE_POLICY_ALLOW`, `CONTEXT_INVALID`, `BIOMETRIC_REJECTED` (7B; o motivo detalhado `BIOMETRIC_*` fica nos passos da evidência), `DEVICE_LOCAL_ALLOW`, `DEVICE_LOCAL_DENY` (8B/D-024: decisão tomada pelo próprio terminal em modo Standalone; o motor não a reavaliou; a evidência leva `deviceLocal:true` e `device{kind,event,userId,logId,deviceTime}`, nunca cartão, PIN nem gabarito).
 
 ### Precedência (a primeira que decide vence)
 

@@ -26,7 +26,7 @@ export const DEFAULT_INTERVALS = {
  *   intervals?: Partial<typeof DEFAULT_INTERVALS>,
  *   random?: () => number,
  *   biometricProvider?: object | null, // omitido = Edge sem biometria (não roda a fila); null = sem provedor (perfis ficam na fila)
- *   commands?: { driver: object, key: string | Buffer | Array<string | Buffer>, agentId: string } | null, // omitido = Edge sem comando remoto
+ *   commands?: { driver: object, key?: string | Buffer | Array<string | Buffer>, keyring?: object, agentId: string } | null, // omitido = Edge sem comando remoto
  * }} input
  * @returns {Promise<{ revoked: boolean, ran: string[], results: Record<string, any> }>}
  */

@@ -50,7 +50,11 @@ const T = {
 const slug = `e2e-edge-${T.tenant.slice(0, 8)}`;
 const pinHash = bcrypt.hashSync(PIN, 4);
 const cardHash = createHash('sha256').update(`${T.tenant}:${CARD.toUpperCase()}`).digest('hex');
-const weekday = new Date().getDay(); // 0=domingo; mesma convenção do snapshot (segunda=1)
+// 0=domingo; mesma convenção do snapshot (segunda=1). No fuso da UNIDADE (America/Manaus), não no da máquina:
+// entre 00:00 e 01:00 em Brasília os dias divergem.
+const weekday = new Date(
+  new Date().toLocaleString('en-US', { timeZone: 'America/Manaus' }),
+).getDay();
 
 function setup() {
   const out = psql(`

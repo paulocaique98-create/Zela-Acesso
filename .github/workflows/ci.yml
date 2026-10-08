@@ -24,6 +24,8 @@ jobs:
           node-version-file: .nvmrc
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - name: Auditoria de dependencias (alta/critica falha o build)
+        run: pnpm audit --audit-level=high
       - run: pnpm lint
       - run: pnpm format:check
       - run: pnpm test
@@ -43,6 +45,10 @@ jobs:
         with:
           version: latest
       - run: pnpm install --frozen-lockfile
+      - name: Chave sintetica de assinatura de comando (D-022; so do runner efemero)
+        run: |
+          JWK=$(node scripts/command-key.mjs gen-signing | node -pe 'JSON.parse(require("fs").readFileSync(0, "utf8")).jwk')
+          echo "COMMAND_SIGNING_JWK=$JWK" >> "$GITHUB_ENV"
       - name: Supabase local (project_id zela-acesso-local, portas 553xx)
         run: node scripts/supabase-local.mjs start
         env:
@@ -63,6 +69,8 @@ jobs:
         run: node apps/edge-agent/e2e/device-command.e2e.mjs
         env:
           COMMAND_MASTER_KEY: c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1
+      - name: E2E da chave do dispositivo e comando v2 (enrollment, prova de posse, kid)
+        run: node apps/edge-agent/e2e/device-key.e2e.mjs
       - name: E2E da eliminação biométrica (revogar, Edge apaga, confirmação, erased)
         run: node apps/edge-agent/e2e/biometric-erasure.e2e.mjs
       - name: Env publico, build e varredura de segredos no bundle

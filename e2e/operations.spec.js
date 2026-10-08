@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginOk, localAdmin } from './helpers.js';
+import { loginOk, localAdmin, goMenu } from './helpers.js';
 
 // Fase 6C pela UI (organizacao Alfa do seed): alerta semeado pelo admin local -> reconhecer -> incidente -> resolver -> encerrar.
 // Alertas nascem no servidor (sem insert pela UI); o teste semeia pelo admin do Supabase local descartavel e apaga tudo.
@@ -35,7 +35,7 @@ test.describe('operacao: alertas e incidentes (Fase 6C, UI)', () => {
       .limit(1)
       .single();
     await loginOk(page, 'alfa.dono@example.test');
-    await page.getByRole('link', { name: 'Operação' }).click();
+    await goMenu(page, { name: 'Alertas e ocorrências' });
     await expect(page.getByRole('heading', { name: 'Alertas' })).toBeVisible();
 
     await page.waitForTimeout(3000); // sem indicador na UI: espera o canal Realtime assinar
@@ -100,7 +100,7 @@ test.describe('operacao: alertas e incidentes (Fase 6C, UI)', () => {
     const ctx = await browser.newContext();
     const other = await ctx.newPage();
     await loginOk(other, 'beta.dono@example.test');
-    await other.getByRole('link', { name: 'Operação' }).click();
+    await goMenu(other, { name: 'Alertas e ocorrências' });
     await expect(other.getByRole('heading', { name: 'Incidentes' })).toBeVisible();
     await expect(other.getByText(TITLE)).toHaveCount(0);
     await ctx.close();

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginOk, localAdmin } from './helpers.js';
+import { loginOk, localAdmin, goMenu } from './helpers.js';
 
 // Fase 5B pela UI (organizacao Alfa do seed): convite -> QR/token -> check-in por token -> check-out.
 // Visitas nao tem exclusao pela UI; a limpeza usa o admin do Supabase local descartavel.
@@ -35,19 +35,19 @@ test.describe('visitantes (Fase 5B, UI)', () => {
     test.slow();
     await loginOk(page, 'alfa.dono@example.test');
 
-    await page.getByRole('link', { name: 'Pessoas' }).click();
+    await goMenu(page, { name: 'Pessoas' });
     await page.getByRole('button', { name: 'Novo' }).click();
     await page.getByLabel('Nome completo').fill(HOST);
     await page.getByRole('button', { name: 'Salvar' }).click();
     await expect(page.getByRole('cell', { name: HOST })).toBeVisible();
-    await page.getByRole('link', { name: 'Zonas', exact: true }).click();
+    await goMenu(page, { name: 'Zonas', exact: true });
     await page.getByRole('button', { name: 'Novo' }).click();
     await page.getByLabel('Nome', { exact: true }).fill(ZONE);
     await page.getByRole('button', { name: 'Salvar' }).click();
     await expect(page.getByRole('cell', { name: ZONE })).toBeVisible();
 
     // Convite
-    await page.getByRole('link', { name: 'Visitantes' }).click();
+    await goMenu(page, { name: 'Visitantes' });
     await page.getByRole('button', { name: 'Novo' }).click();
     const form = page.getByRole('dialog', { name: 'Novo convite' });
     await form.getByLabel('Anfitrião').selectOption({ label: HOST });
@@ -113,7 +113,7 @@ test.describe('visitantes (Fase 5B, UI)', () => {
     const ctx = await browser.newContext();
     const beta = await ctx.newPage();
     await loginOk(beta, 'beta.dono@example.test');
-    await beta.getByRole('link', { name: 'Visitantes' }).click();
+    await goMenu(beta, { name: 'Visitantes' });
     await expect(beta.getByRole('heading', { name: 'Visitantes' })).toBeVisible();
     await expect(beta.getByText(VISITOR)).toHaveCount(0);
     await ctx.close();
@@ -127,7 +127,7 @@ test.describe('visitantes (Fase 5B, UI)', () => {
     const ctxR = await browser.newContext();
     const recep = await ctxR.newPage();
     await loginOk(recep, 'alfa.recepcao@example.test');
-    await recep.getByRole('link', { name: 'Visitantes' }).click();
+    await goMenu(recep, { name: 'Visitantes' });
     await expect(recep.getByRole('cell', { name: VISITOR }).first()).toBeVisible();
     await expect(recep.getByRole('button', { name: 'Check-in por token' })).toBeVisible();
     await ctxR.close();

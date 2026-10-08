@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { API, DEV_PASSWORD, login, loginOk } from './helpers.js';
+import { API, DEV_PASSWORD, login, loginOk, goMenu } from './helpers.js';
 
 test.describe('autenticacao', () => {
   test('rota protegida redireciona para /login', async ({ page }) => {
@@ -23,18 +23,18 @@ test.describe('isolamento entre organizacoes (UI)', () => {
     await loginOk(page, 'alfa.dono@example.test');
     await expect(page.getByRole('heading', { name: 'Condomínio Alfa (exemplo)' })).toBeVisible();
     await expect(page.locator('#tenant option')).toHaveCount(1);
-    await page.getByRole('link', { name: 'Locais' }).click();
+    await goMenu(page, { name: 'Locais' });
     await expect(page.getByRole('cell', { name: 'Alfa - Sede' })).toBeVisible();
     await expect(page.getByRole('cell', { name: 'Alfa - Garagem' })).toBeVisible();
     await expect(page.getByText('Beta - Matriz')).toHaveCount(0);
-    await page.getByRole('link', { name: 'Membros' }).click();
+    await goMenu(page, { name: 'Membros' });
     await expect(page.getByRole('cell', { name: /Gabi Beta/ })).toHaveCount(0);
     await expect(page.getByRole('cell', { name: /Bruno Alfa/ })).toBeVisible();
   });
 
   test('proprietario do Beta ve so dados do Beta', async ({ page }) => {
     await loginOk(page, 'beta.dono@example.test');
-    await page.getByRole('link', { name: 'Locais' }).click();
+    await goMenu(page, { name: 'Locais' });
     await expect(page.getByRole('cell', { name: 'Beta - Matriz' })).toBeVisible();
     await expect(page.getByText('Alfa - Sede')).toHaveCount(0);
   });
@@ -49,7 +49,7 @@ test.describe('isolamento entre organizacoes (UI)', () => {
 
   test('usuario com escopo por site ve somente o site do escopo', async ({ page }) => {
     await loginOk(page, 'alfa.sede@example.test');
-    await page.getByRole('link', { name: 'Locais' }).click();
+    await goMenu(page, { name: 'Locais' });
     await expect(page.getByRole('cell', { name: 'Alfa - Sede' })).toBeVisible();
     await expect(page.getByText('Alfa - Garagem')).toHaveCount(0);
   });

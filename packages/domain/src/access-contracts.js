@@ -22,6 +22,9 @@ export const ACCESS_REASON_CODES = [
   'OFFLINE_POLICY_ALLOW',
   'CONTEXT_INVALID',
   'BIOMETRIC_REJECTED',
+  // Fase 8B (D-024): decisão tomada pelo próprio terminal (modo Standalone); o motor não a reavaliou.
+  'DEVICE_LOCAL_ALLOW',
+  'DEVICE_LOCAL_DENY',
 ];
 
 /** @typedef {'ALLOW' | 'DENY' | 'CHALLENGE' | 'DEGRADED_ALLOW' | 'DEGRADED_DENY'} AccessDecisionKind */

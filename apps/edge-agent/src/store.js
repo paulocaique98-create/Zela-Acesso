@@ -3,6 +3,7 @@
 // presença local (anti-passback) e contadores de falha de PIN. Nenhum PIN/token em texto puro entra aqui.
 
 import { DatabaseSync } from 'node:sqlite';
+import { createSealer } from './seal.js';
 
 const SCHEMA = `
 create table if not exists meta (k text primary key, v text not null);
@@ -43,8 +44,12 @@ export function backoffMs(attempts) {
   return Math.min(BACKOFF_MAX_MS, BACKOFF_BASE_MS * 2 ** (n - 1));
 }
 
-/** @param {string} [path] arquivo SQLite; ':memory:' (padrão) só para testes */
-export function openStore(path = ':memory:') {
+/**
+ * @param {string} [path] arquivo SQLite; ':memory:' (padrão) só para testes
+ * @param {{ key?: string | Buffer }} [opts] `key`: cifra snapshot e fila em repouso (AES-256-GCM, ver seal.js)
+ */
+export function openStore(path = ':memory:', { key } = {}) {
+  const sealer = createSealer(key);
   const db = new DatabaseSync(path);
   if (path !== ':memory:') db.exec('pragma journal_mode = wal; pragma synchronous = full;');
   db.exec(SCHEMA);
@@ -88,9 +93,11 @@ export function openStore(path = ':memory:') {
       void q(
         `insert into cache (id, hash, fetched_at, body) values (1, ?, ?, ?)
          on conflict(id) do update set hash = excluded.hash, fetched_at = excluded.fetched_at, body = excluded.body`,
-      ).run(hash, fetchedAt, body),
-    loadSnapshotRow: () =>
-      q('select hash, fetched_at as fetchedAt, body from cache where id = 1').get() ?? null,
+      ).run(hash, fetchedAt, sealer.seal('cache.body', body)),
+    loadSnapshotRow: () => {
+      const row = q('select hash, fetched_at as fetchedAt, body from cache where id = 1').get();
+      return row ? { ...row, body: sealer.open('cache.body', row.body) } : null;
+    },
     touchSnapshot: (fetchedAt) =>
       void q('update cache set fetched_at = ? where id = 1').run(fetchedAt),
     wipeCache: () => void q('delete from cache').run(),
@@ -101,7 +108,8 @@ export function openStore(path = ':memory:') {
       Number(
         q(
           'insert or ignore into event_queue (idempotency_key, payload, created_at, next_attempt_at) values (?, ?, ?, ?)',
-        ).run(key, JSON.stringify(payload), nowIso, nowIso).changes,
+        ).run(key, sealer.seal('event_queue.payload', JSON.stringify(payload)), nowIso, nowIso)
+          .changes,
       ) === 1,
     dueEvents: (nowIso, limit = 50) =>
       q(
@@ -109,7 +117,7 @@ export function openStore(path = ':memory:') {
          where sent_at is null and rejected_at is null and next_attempt_at <= ? order by id limit ?`,
       )
         .all(nowIso, limit)
-        .map((r) => ({ ...r, payload: JSON.parse(r.payload) })),
+        .map((r) => ({ ...r, payload: JSON.parse(sealer.open('event_queue.payload', r.payload)) })),
     markSent: (id, nowIso) =>
       void q('update event_queue set sent_at = ?, last_error = null where id = ?').run(nowIso, id),
     /** `jitter` em [0,1): acrescenta até 20% à espera, para os agentes não retentarem juntos. */

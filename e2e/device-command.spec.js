@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loginOk } from './helpers.js';
+import { goMenu, loginOk } from './helpers.js';
 
 // Fase 4E, UI do operador: abertura remota. O seed nao tem agente Edge, entao o pedido do dono recebe a
 // mensagem "sem agente" (o fluxo completo com agente real esta em apps/edge-agent/e2e/device-command.e2e.mjs).
@@ -29,13 +29,13 @@ test.describe('abertura remota de ponto (Fase 4E, UI)', () => {
     test.slow();
     await loginOk(page, 'alfa.dono@example.test');
 
-    await page.getByRole('link', { name: 'Zonas', exact: true }).click();
+    await goMenu(page, { name: 'Zonas', exact: true });
     await page.getByRole('button', { name: 'Novo' }).click();
     await page.getByLabel('Nome', { exact: true }).fill(ZONE);
     await page.getByRole('button', { name: 'Salvar' }).click();
     await expect(page.getByRole('cell', { name: ZONE })).toBeVisible();
 
-    await page.getByRole('link', { name: 'Pontos de acesso' }).click();
+    await goMenu(page, { name: 'Pontos de acesso' });
     await page.getByRole('button', { name: 'Novo' }).click();
     const form = page.getByRole('dialog', { name: 'Novo ponto de acesso' });
     await form.getByLabel('Zona').selectOption({ label: ZONE });
@@ -49,7 +49,7 @@ test.describe('abertura remota de ponto (Fase 4E, UI)', () => {
     await expect(dlg.getByRole('button', { name: 'Abrir ponto' })).toBeDisabled();
     await dlg.getByLabel(/Motivo/).fill('Teste E2E sem agente');
     await dlg.getByRole('button', { name: 'Abrir ponto' }).click();
-    await expect(page.getByText('Não há agente Edge ativo neste local')).toBeVisible();
+    await expect(page.getByText('Não há agente Edge ativo neste local').last()).toBeVisible();
     await dlg.getByRole('button', { name: 'Cancelar' }).click();
 
     await row.getByRole('button', { name: 'Travar remotamente' }).click();
@@ -57,21 +57,21 @@ test.describe('abertura remota de ponto (Fase 4E, UI)', () => {
     await expect(lockDlg.getByText(/não impede a saída/)).toBeVisible();
     await lockDlg.getByLabel(/Motivo/).fill('Teste E2E trancar sem agente');
     await lockDlg.getByRole('button', { name: 'Travar ponto' }).click();
-    await expect(page.getByText('Não há agente Edge ativo neste local')).toBeVisible();
+    await expect(page.getByText('Não há agente Edge ativo neste local').last()).toBeVisible();
     await lockDlg.getByRole('button', { name: 'Cancelar' }).click();
 
     // Recepcao le pontos mas nao tem device:command
     const ctxR = await browser.newContext();
     const recep = await ctxR.newPage();
     await loginOk(recep, 'alfa.recepcao@example.test');
-    await recep.getByRole('link', { name: 'Pontos de acesso' }).click();
+    await goMenu(recep, { name: 'Pontos de acesso' });
     await expect(recep.getByRole('cell', { name: POINT })).toBeVisible();
     await expect(recep.getByRole('button', { name: 'Abrir remotamente' })).toHaveCount(0);
     await expect(recep.getByRole('button', { name: 'Travar remotamente' })).toHaveCount(0);
     await ctxR.close();
 
     await removeRow(page, POINT, 'ponto de acesso');
-    await page.getByRole('link', { name: 'Zonas', exact: true }).click();
+    await goMenu(page, { name: 'Zonas', exact: true });
     await removeRow(page, ZONE, 'zona');
   });
 });

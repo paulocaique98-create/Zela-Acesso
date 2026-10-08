@@ -10,11 +10,24 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import assert from 'node:assert/strict';
 import { createMockHardware } from '@zela/device-drivers';
+import { generateKeyPair, kidOf } from '../src/keys.js';
+import { createKeyring } from '../src/trust.js';
 import { deriveCommandKey } from '../../../supabase/functions/edge-gateway/handler.js';
 import { createHttpTransport, openStore, runOnce } from '../src/index.js';
 
 const DB = 'supabase_db_zela-acesso-local';
 const GATEWAY = process.env.EDGE_GATEWAY_URL ?? 'http://127.0.0.1:55321/functions/v1/edge-gateway';
+
+function signingJwk() {
+  if (process.env.COMMAND_SIGNING_JWK) return process.env.COMMAND_SIGNING_JWK;
+  try {
+    return (
+      /^COMMAND_SIGNING_JWK='?(.*?)'?$/m.exec(readFileSync('supabase/.env', 'utf8'))?.[1] ?? ''
+    );
+  } catch {
+    return '';
+  }
+}
 
 function masterKey() {
   if (process.env.COMMAND_MASTER_KEY) return process.env.COMMAND_MASTER_KEY;
@@ -119,20 +132,26 @@ let failed = false;
 try {
   const master = masterKey();
   assert.match(master, /^[0-9a-f]{64}$/, 'COMMAND_MASTER_KEY ausente (env ou supabase/.env)');
+  // O gateway local assina em v2 (Ed25519 + kid) quando COMMAND_SIGNING_JWK existe (D-022); a mestra HMAC é o legado.
+  const jwk = JSON.parse(signingJwk() || 'null');
+  assert.ok(jwk?.x, 'COMMAND_SIGNING_JWK ausente (node scripts/command-key.mjs gen-signing)');
+  const cloudPub = Buffer.from(jwk.x, 'base64url').toString('hex');
+  const cloudKid = kidOf(cloudPub);
+  const anchor = { [cloudKid]: cloudPub };
   await waitForGateway();
   const { agentId, secret } = setup();
   const transport = createHttpTransport({ baseUrl: GATEWAY, agentId, secret });
   const store = openStore();
   const driver = createMockHardware({ points: [T.point], now: new Date(), env: 'test' });
-  const key = await deriveCommandKey(master, agentId);
-  const round = (k = key) =>
+  const legacyKey = await deriveCommandKey(master, agentId);
+  const round = (seed = anchor, key = []) =>
     runOnce({
       store,
       transport,
       now: new Date(),
       version: 'e2e',
       last: {},
-      commands: { driver, key: k, agentId },
+      commands: { driver, key, keyring: createKeyring({ store, transport, seed }), agentId },
     });
 
   const cmd1 = requestUnlock('visita autorizada no portao');
@@ -170,8 +189,9 @@ try {
   // Chave errada no agente (ex.: agente reconfigurado com a chave de outro): rejeita e a nuvem fica sabendo.
   await driver.lock(T.point);
   const cmd2 = requestUnlock('segundo pedido');
-  const r3 = await round(await deriveCommandKey(master, id()));
-  check('chave de comando errada: rejeitado e porta segue trancada', () => {
+  const wrong = generateKeyPair();
+  const r3 = await round({ [kidOf(wrong.publicKey)]: wrong.publicKey });
+  check('âncora de chave de comando errada: rejeitado e porta segue trancada', () => {
     assert.equal(r3.results.commands.results[0].code, 'BAD_SIGNATURE');
     assert.equal(driver.getStatus(T.point).locked, true);
   });
@@ -179,25 +199,16 @@ try {
     assert.equal(cmdStatus(cmd2), 'rejected|BAD_SIGNATURE'),
   );
 
-  // Rotação da mestra: o agente aceita a chave nova E a anterior (o gateway ainda assina com a anterior).
+  // Agente só com HMAC legado (v1) não aceita comando v2: não há rebaixamento de esquema.
   await driver.lock(T.point);
-  const newMasterKey = await deriveCommandKey('f'.repeat(64), agentId);
-  const cmd3 = requestUnlock('rotacao: gateway ainda na mestra antiga');
-  const r4 = await round([newMasterKey, key]);
-  check('rotação: agente com [nova, anterior] aceita a assinatura da mestra anterior', () => {
-    assert.equal(r4.results.commands.results[0].status, 'executed');
-    assert.equal(driver.getStatus(T.point).locked, false);
-  });
-  check('rotação: nuvem registra executed/OK', () => assert.equal(cmdStatus(cmd3), 'executed|OK'));
-  await driver.lock(T.point);
-  const cmd4 = requestUnlock('rotacao: agente so com a chave nova');
-  const r5 = await round([newMasterKey]);
-  check('rotação: agente só com a nova rejeita a assinatura da mestra anterior', () => {
-    assert.equal(r5.results.commands.results[0].code, 'BAD_SIGNATURE');
+  const cmd3 = requestUnlock('agente legado so com HMAC');
+  const r4 = await round({}, [legacyKey]);
+  check('agente só com HMAC rejeita comando v2 (BAD_SIGNATURE) e a porta segue trancada', () => {
+    assert.equal(r4.results.commands.results[0].code, 'BAD_SIGNATURE');
     assert.equal(driver.getStatus(T.point).locked, true);
   });
-  check('rotação: nuvem registra rejected/BAD_SIGNATURE', () =>
-    assert.equal(cmdStatus(cmd4), 'rejected|BAD_SIGNATURE'),
+  check('nuvem registra rejected/BAD_SIGNATURE para o agente legado', () =>
+    assert.equal(cmdStatus(cmd3), 'rejected|BAD_SIGNATURE'),
   );
 
   // Daemon real (main.js) com configuração só por ambiente: abre via Mock e reporta.
@@ -211,8 +222,7 @@ try {
       EDGE_DB_PATH: join(tmpdir(), `zela-e2e-${agentId}.sqlite`),
       EDGE_DRIVER: 'mock',
       EDGE_MOCK_POINTS: T.point,
-      EDGE_COMMAND_KEY: key,
-      EDGE_COMMAND_KEY_PREVIOUS: newMasterKey,
+      EDGE_COMMAND_PUBKEYS: `${cloudKid}:${cloudPub}`,
       EDGE_TICK_MS: '500',
     },
     stdio: 'ignore',

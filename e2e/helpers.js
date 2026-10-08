@@ -81,3 +81,25 @@ export function localAdmin() {
     throw new Error('RECUSADO: API local do Zela Acesso nao encontrada.');
   return createClient(API, env['SERVICE_ROLE_KEY'], { auth: { persistSession: false } });
 }
+
+/**
+ * Navega pelo menu lateral. Os grupos comecam fechados (acordeao): abre o grupo que contem o link, se preciso.
+ * @param {import('@playwright/test').Page} page
+ * @param {{ name: string | RegExp, exact?: boolean }} opts
+ */
+export async function goMenu(page, opts) {
+  const nav = page.getByRole('navigation', { name: 'Principal' });
+  await nav.waitFor();
+  const linkOpts = { ...opts, includeHidden: true };
+  const link = nav.getByRole('link', linkOpts);
+  await link.first().waitFor({ state: 'attached' });
+  if (!(await link.first().isVisible())) {
+    await nav
+      .getByRole('listitem')
+      .filter({ has: page.getByRole('link', linkOpts) })
+      .getByRole('button')
+      .first()
+      .click();
+  }
+  await link.first().click();
+}

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createMockHardware } from '@zela/device-drivers';
-import { handleCommand, signCommand } from './commands.js';
+import { handleCommand, signCommand, signCommandV2 } from './commands.js';
+import { generateKeyPair, kidOf } from './keys.js';
 import { openStore } from './store.js';
 
 const KEY = 'chave-de-comando-do-agente-A';
@@ -152,5 +153,52 @@ describe('handleCommand', () => {
     });
     expect(driver.getStatus('p1').locked).toBe(true);
     expect(store.purgeCommands(iso(10 * 60_000))).toBe(2);
+  });
+});
+
+describe('handleCommand v2 (Ed25519 + kid, D-022)', () => {
+  const A = generateKeyPair();
+  const B = generateKeyPair();
+  const pubs = { [kidOf(A.publicKey)]: A.publicKey };
+  const body = {
+    id: 'cmd-0000000000000101',
+    agent_id: AGENT,
+    action: 'unlock',
+    point_id: 'p1',
+    duration_ms: 3000,
+    issued_at: iso(-1000),
+    expires_at: iso(9000),
+  };
+
+  it('executa comando v2 assinado por chave confiável, sem nenhuma chave HMAC no agente', async () => {
+    const { run, driver } = setup();
+    const r = await run(signCommandV2(body, A.privateKey), { key: [], publicKeys: pubs });
+    expect(r).toEqual({ status: 'executed', code: 'OK' });
+    expect(driver.getStatus('p1').locked).toBe(false);
+  });
+
+  it('rejeita: chave fora do conjunto, kid trocado/malformado, campo alterado e v1 sem HMAC', async () => {
+    const { run, driver } = setup();
+    const opts = { key: [], publicKeys: pubs };
+    expect((await run(signCommandV2(body, B.privateKey), opts)).code).toBe('BAD_SIGNATURE');
+    const ok = signCommandV2(body, A.privateKey);
+    expect((await run({ ...ok, kid: kidOf(B.publicKey) }, opts)).code).toBe('BAD_SIGNATURE');
+    expect((await run({ ...ok, kid: 'z'.repeat(16) }, opts)).code).toBe('MALFORMED');
+    expect((await run({ ...ok, point_id: 'p2' }, opts)).code).toBe('BAD_SIGNATURE');
+    expect((await run({ ...ok, duration_ms: 60000 }, opts)).code).toBe('BAD_SIGNATURE');
+    // v1 com HMAC válido, mas o agente só tem chaves públicas: recusa (sem downgrade)
+    const v1 = signCommand({ v: 1, ...body }, KEY);
+    expect((await run(v1, opts)).code).toBe('BAD_SIGNATURE');
+    expect(driver.getStatus('p1').locked).toBe(true);
+  });
+
+  it('kid removido do conjunto deixa de valer; replay é rejeitado; v1 segue valendo se há HMAC', async () => {
+    const { run } = setup();
+    const cmd = signCommandV2(body, A.privateKey);
+    expect((await run(cmd, { publicKeys: {} })).code).toBe('BAD_SIGNATURE');
+    expect((await run(cmd, { publicKeys: pubs })).status).toBe('executed');
+    expect((await run(cmd, { publicKeys: pubs })).code).toBe('REPLAY');
+    const v1 = signCommand({ v: 1, ...body, id: 'cmd-0000000000000102' }, KEY);
+    expect((await run(v1, { publicKeys: pubs })).status).toBe('executed');
   });
 });

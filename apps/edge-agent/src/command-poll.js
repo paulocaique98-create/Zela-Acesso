@@ -8,10 +8,12 @@ import { loadClockStatus } from './clock.js';
 import { handleCommand } from './commands.js';
 
 /**
- * @param {{ store: object, transport: object, driver: object, key: string | Buffer, agentId: string, now: Date }} input
+ * @param {{ store: object, transport: object, driver: object, key?: string | Buffer | Array<string | Buffer>,
+ *   keyring?: ReturnType<typeof import('./trust.js').createKeyring>, agentId: string, now: Date }} input
+ * `key`: HMAC v1 (legado). `keyring`: chaves públicas v2 por kid (D-022).
  * @returns {Promise<{ status: 'ok' | 'offline' | 'revoked', results: Array<{ id: unknown, status: string, code: string, reported: boolean }> }>}
  */
-export async function pollAndRunCommands({ store, transport, driver, key, agentId, now }) {
+export async function pollAndRunCommands({ store, transport, driver, key, keyring, agentId, now }) {
   let res;
   try {
     res = await transport.pollCommands();
@@ -25,11 +27,15 @@ export async function pollAndRunCommands({ store, transport, driver, key, agentI
   const list = Array.isArray(res?.commands) ? res.commands : [];
   const results = [];
   const clockUntrusted = loadClockStatus(store, now).status === 'untrusted';
+  let publicKeys = keyring && list.length > 0 ? await keyring.get(now) : {};
   for (const command of list) {
+    // kid desconhecido: pode ser rotação recém-publicada; tenta atualizar o chaveiro uma vez (limitado a 1/min)
+    if (keyring && command?.v === 2 && !Object.hasOwn(publicKeys, command.kid))
+      publicKeys = await keyring.get(now, { force: true });
     const gated = clockUntrusted && command?.action !== 'lock';
     const r = await (gated
       ? Promise.resolve({ status: /** @type {const} */ ('rejected'), code: 'CLOCK_UNTRUSTED' })
-      : handleCommand({ store, driver, key, agentId, now, command }).catch(() => ({
+      : handleCommand({ store, driver, key, publicKeys, agentId, now, command }).catch(() => ({
           status: /** @type {const} */ ('failed'),
           code: 'DRIVER_ERROR',
         })));

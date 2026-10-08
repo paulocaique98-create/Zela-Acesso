@@ -12,6 +12,7 @@ const KIND_LABEL = {
   door_forced: 'Porta forçada',
   door_held_open: 'Porta aberta por tempo excessivo',
   device_offline: 'Agente Edge offline',
+  chain_broken: 'Cadeia de evidência quebrada',
 };
 const SEVERITY_LABEL = { critical: 'Crítica', high: 'Alta', medium: 'Média', low: 'Baixa' };
 const ALERT_STATUS_LABEL = { open: 'Aberto', acknowledged: 'Reconhecido', resolved: 'Resolvido' };

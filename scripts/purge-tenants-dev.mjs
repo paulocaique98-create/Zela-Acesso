@@ -38,6 +38,8 @@ create temp table _del_u on commit drop as
     and not exists (select 1 from public.memberships m where m.user_id = u.id and m.tenant_id not in (select id from _del_t));
 select 'organizacoes a apagar' as item, count(*) from _del_t
 union all select 'usuarios a apagar', count(*) from _del_u;
+-- edge_rate_hits nao tem tenant_id (liga ao agente); com replica role o ON DELETE CASCADE nao dispara.
+delete from public.edge_rate_hits where agent_id in (select id from public.edge_agents where tenant_id in (select id from _del_t));
 do $$
 declare r record; n bigint;
 begin

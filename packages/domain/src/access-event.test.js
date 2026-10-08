@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { toAccessEventParams, toPhysicalOutcomeParams } from './access-event.js';
+import {
+  toAccessEventParams,
+  toDeviceLocalDecisionParams,
+  toPhysicalOutcomeParams,
+} from './access-event.js';
 import { evaluateAccess } from './access-engine.js';
 
 const decision = {
@@ -102,8 +106,8 @@ describe('contrato x migration 3C', () => {
     const mig = (f) =>
       readFileSync(new URL(`../../../supabase/migrations/${f}`, import.meta.url), 'utf8');
     const sql = mig('20261015120000_phase3c_access_events.sql');
-    // A lista de motivos vigente é a da migration mais recente que a redefine (7B amplia o CHECK).
-    const reasonSql = mig('20261025120000_phase7b_biometric_reason.sql');
+    // A lista de motivos vigente é a da migration mais recente que a redefine (7B e 8B ampliam o CHECK).
+    const reasonSql = mig('20261105120000_phase8b_device_local_reasons.sql');
     const list = (re) =>
       [...(re.exec(sql)?.[1] ?? '').matchAll(/'([A-Z_]+)'/g)].map((m) => m[1]).sort();
     expect(
@@ -159,5 +163,53 @@ describe('toPhysicalOutcomeParams', () => {
     expect(() => toPhysicalOutcomeParams({ ...base, actuation: {} })).toThrow();
     expect(() => toPhysicalOutcomeParams({ ...base, occurredAt: 'x', actuation: act })).toThrow();
     expect(() => toPhysicalOutcomeParams({ ...base, source: 'ENGINE', actuation: act })).toThrow();
+  });
+});
+
+describe('toDeviceLocalDecisionParams', () => {
+  const base = {
+    tenantId: 't1',
+    siteId: 's1',
+    occurredAt: '2026-10-08T10:00:00Z',
+    allowed: true,
+    accessPointId: 'ap1',
+    idempotencyKey: 'edge:dev-0001',
+    device: { kind: 'controlid', event: 7, userId: 42, logId: '519', deviceTime: 1532977090 },
+  };
+  it('concede e nega com código próprio, sem passar pelo motor', () => {
+    const a = toDeviceLocalDecisionParams(base);
+    expect(a).toMatchObject({
+      p_event_type: 'access_decision',
+      p_decision: 'ALLOW',
+      p_reason_code: 'DEVICE_LOCAL_ALLOW',
+      p_source: 'EDGE_AGENT',
+      p_credential: null,
+      p_access_point: 'ap1',
+    });
+    expect(a.p_evidence).toEqual({
+      deviceLocal: true,
+      device: { kind: 'controlid', event: '7', userId: '42', logId: '519', deviceTime: 1532977090 },
+      steps: [],
+    });
+    const d = toDeviceLocalDecisionParams({ ...base, allowed: false });
+    expect([d.p_decision, d.p_reason_code]).toEqual(['DENY', 'DEVICE_LOCAL_DENY']);
+  });
+  it('só aceita valores simples na evidência (allowlist) e valida a entrada', () => {
+    const x = toDeviceLocalDecisionParams({
+      ...base,
+      device: {
+        kind: 'controlid',
+        event: '7',
+        userId: '{"card":"123"}',
+        logId: 'a b',
+        deviceTime: NaN,
+      },
+    });
+    expect(x.p_evidence.device).toMatchObject({ userId: null, logId: null, deviceTime: null });
+    expect(() => toDeviceLocalDecisionParams({ ...base, allowed: 'sim' })).toThrow();
+    expect(() => toDeviceLocalDecisionParams({ ...base, idempotencyKey: '' })).toThrow();
+    expect(() => toDeviceLocalDecisionParams({ ...base, device: { kind: 'x y' } })).toThrow();
+    expect(() => toDeviceLocalDecisionParams({ ...base, tenantId: '' })).toThrow();
+    expect(() => toDeviceLocalDecisionParams({ ...base, occurredAt: 'x' })).toThrow();
   });
 });

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Bell, ImageIcon, Palette, Server, Settings, Shield, ShieldAlert, Zap } from 'lucide-react';
+import { PlatformMfaCard } from '../auth/MfaGate';
 import { useBranding } from '../hooks/useBranding';
 import { safeMessage } from '../lib/errors';
 import { supabase } from '../lib/supabase';
@@ -243,10 +244,14 @@ export function SettingsPage() {
               Encerrar todas as sessões
             </button>,
           )}
-          {placeholder(
-            'MFA para administradores',
-            'Segundo fator obrigatório para a equipe da plataforma e donos de organização (decisão D-016).',
-          )}
+          <div className={`${card} max-w-3xl !p-6`}>
+            <h2 className="mb-2 font-bold text-on-surface">MFA para administradores</h2>
+            <p className="mb-3 text-small text-on-surface-variant">
+              Segundo fator obrigatório para a equipe da plataforma (decisão D-016). Nas
+              organizações, o dono liga em Membros.
+            </p>
+            <PlatformMfaCard />
+          </div>
         </div>
       )}
 
