@@ -13,7 +13,7 @@
 | 8 | Hardware real (1 fabricante com documentação) | Teste de bancada documentado |
 | 9 | Hardening, backup/restore, DR | Security Audit + Adversarial Verify sem críticos |
 | 10–11 | Piloto controlado → RC | Critérios da Seção 58 do Prompt-Mestre |
-| Pós-MVP | Ferramenta de ponto virtual (pesquisa em `24-PONTO-VIRTUAL-PESQUISA.md`; exige o dono alterar o limite "acesso físico ≠ ponto") | Decisão REP-P x coletor, parecer jurídico e leitura oficial da Portaria 671 |
+| Pós-MVP | Coletor virtual em tablet/celular (referência Secullum Checkin/Ponto Virtual, `24-PONTO-VIRTUAL-PESQUISA.md`): (A) leitor de acesso, cabe no escopo; (B) ponto com valor legal, exige o dono alterar o limite "acesso físico ≠ ponto" | Decisão REP-P x coletor, parecer jurídico e leitura oficial da Portaria 671 |
 
 ## Backlog de segurança (origem: Fase 9C, 07/10/2026)
 
