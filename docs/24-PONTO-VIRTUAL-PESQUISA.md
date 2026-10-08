@@ -21,6 +21,14 @@ Como o Checkin integra ao acesso (FAQ oficial): cadastra-se o Checkin como contr
 
 Fontes: [Secullum Checkin – FAQ](https://www.secullum.com.br/pt/canal-cliente/perguntas/552), [Checkin com sistemas de acesso](https://www.secullum.com.br/pt/canal-cliente/perguntas/527), [Secullum Ponto Virtual – FAQ](https://www.secullum.com.br/pt/canal-cliente/perguntas/1161), [Blog: Secullum apresenta o Ponto Virtual](https://www.secullum.com.br/blog/a-secullum-apresenta-o-ponto-virtual-o-futuro-do-controle-de-frequencia/), [BioWeb](https://www.secullum.com.br/en/canal-cliente/perguntas/1158). A página `/pt/produtos/checkin` redireciona para uma lista de produtos descontinuados e não serviu. Planos e preços ficam com as revendas (não levantei).
 
+## Decisão do dono (08/10/2026): é CONTROLE DE ACESSO, não ponto
+
+O dono confirmou que a ferramenta será usada para controle de acesso, **não** para ponto. Consequências, valendo como regra para esta frente:
+- O produto é o (A) abaixo. O (B) "Zela Ponto" está **descartado**, não só adiado: sem REP-P, AFD/AEJ, comprovante de jornada, cartão-ponto, horas extras, faltas, atrasos, justificativas, folha, nem relatório de jornada. O limite permanente "acesso físico ≠ ponto" **não muda**.
+- Os eventos são de presença/acesso (quem entrou ou saiu, onde, quando, por qual credencial e com qual decisão), com a finalidade "segurança e controle de acesso" no RIPD. A UI e os textos não usam a palavra "ponto" nem "jornada" e o produto não promete valor trabalhista.
+- Quem usar o dado de acesso para apurar jornada o faz por conta própria e fora do Zela; podemos exportar eventos de acesso, mas sem formato AFD/AEJ nem apresentação de jornada. O texto de finalidade e os termos de uso devem dizer isso (revisão jurídica pendente).
+- Não há mais a pergunta REP-P x coletor; os itens regulatórios da Portaria 671 acima ficam apenas como **contexto do que NÃO fazemos**.
+
 ## Correção do dono (08/10/2026): identificar para REGISTRAR, não para abrir
 
 O uso principal desses coletores é **registrar a entrada e a saída** para ter controle mais eficiente; reconhecer o rosto (ou ler QR/senha) não precisa abrir nada. Isto muda o desenho:
@@ -50,7 +58,7 @@ Fontes secundárias (fornecedores); **o texto oficial e o Anexo IX precisam ser 
 
 ## Decisões para o dono
 
-1. **Fatiar em dois produtos**: (A) **Zela Check-in** (leitor em tablet/celular que identifica e REGISTRA entrada/saída, com atuação opcional; dentro do escopo de controle de acesso enquanto não for registro de jornada) e (B) **Zela Ponto** (marcação com valor legal, pós-MVP). Recomendação: fazer só o (A) primeiro; ele reaproveita quase tudo e não exige certificação.
+1. **(Resolvido: só o A; ver decisão acima.)** Fatiar em dois produtos: (A) **Zela Check-in** (leitor em tablet/celular que identifica e REGISTRA entrada/saída, com atuação opcional; dentro do escopo de controle de acesso enquanto não for registro de jornada) e (B) **Zela Ponto** (marcação com valor legal, pós-MVP). Recomendação: fazer só o (A) primeiro; ele reaproveita quase tudo e não exige certificação.
 2. Para o (B): ser REP-P certificado (INPI, AFD/AEJ, hora legal, comprovante) ou apenas coletar marcações para um sistema de ponto já regularizado.
 3. **LGPD**: geolocalização e facial são dados pessoais (facial é biométrico/sensível); consentimento em relação de emprego é frágil; precisa de base legal, RIPD e parecer jurídico, e colide com o limite "sem vigilância/monitoramento profissional".
 4. Plataforma do app (PWA no navegador do tablet, Android nativo ou ambos): PWA evita loja e distribuição, mas tem menos acesso a câmera/kiosk/offline robusto. Decidir com um protótipo.

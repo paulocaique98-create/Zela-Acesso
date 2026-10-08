@@ -13,7 +13,7 @@
 | 8 | Hardware real (1 fabricante com documentação) | Teste de bancada documentado |
 | 9 | Hardening, backup/restore, DR | Security Audit + Adversarial Verify sem críticos |
 | 10–11 | Piloto controlado → RC | Critérios da Seção 58 do Prompt-Mestre |
-| Pós-MVP | Coletor virtual em tablet/celular (referência Secullum Checkin/Ponto Virtual, `24-PONTO-VIRTUAL-PESQUISA.md`): (A) leitor de acesso, cabe no escopo; (B) ponto com valor legal, exige o dono alterar o limite "acesso físico ≠ ponto" | Decisão REP-P x coletor, parecer jurídico e leitura oficial da Portaria 671 |
+| Pós-MVP | Zela Check-in: leitor em tablet/celular que identifica e REGISTRA entrada/saída (ponto `register_only`, atuação opcional); **controle de acesso, não ponto** (dono, 08/10/2026; ver `24-PONTO-VIRTUAL-PESQUISA.md`) | Desenho do leitor, enrollment e chave de dispositivo, E2E no Edge sem driver de porta; facial só após benchmark e RIPD |
 
 ## Backlog de segurança (origem: Fase 9C, 07/10/2026)
 
