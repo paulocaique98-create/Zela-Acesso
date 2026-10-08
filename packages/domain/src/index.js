@@ -11,3 +11,4 @@ export * from './access-event.js';
 export * from './antipassback.js';
 export * from './visit.js';
 export * from './reader.js';
+export * from './zela-pass-address.js';

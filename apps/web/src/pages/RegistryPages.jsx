@@ -5,7 +5,12 @@ import { safeMessage } from '../lib/errors';
 import { supabase } from '../lib/supabase';
 import { toast } from '../lib/toast';
 import { useQuery } from '../lib/useQuery';
-import { validateCardNumber, validatePin, validateTokenDays } from '@zela/domain';
+import {
+  suggestZelaPassUrl,
+  validateCardNumber,
+  validatePin,
+  validateTokenDays,
+} from '@zela/domain';
 import { useWorkspace } from '../workspace/WorkspaceProvider';
 import { Guard, Status } from './DataPages';
 
@@ -896,7 +901,10 @@ const TIMEZONES = [
 ];
 
 function SiteForm({ site, tenantId, onDone }) {
+  const { current } = useWorkspace();
   const [busy, setBusy] = useState(false);
+  // Endereco gerado do nome do local enquanto ninguem o editar a mao (local ja com endereco nunca e sobrescrito).
+  const [urlTouched, setUrlTouched] = useState(Boolean(site?.zela_pass_url));
   const [f, setF] = useState({
     name: site?.name ?? '',
     timezone: site?.timezone ?? 'America/Sao_Paulo',
@@ -930,7 +938,15 @@ function SiteForm({ site, tenantId, onDone }) {
           minLength={2}
           maxLength={120}
           value={f.name}
-          onChange={(e) => setF({ ...f, name: e.target.value })}
+          onChange={(e) =>
+            setF({
+              ...f,
+              name: e.target.value,
+              zela_pass_url: urlTouched
+                ? f.zela_pass_url
+                : suggestZelaPassUrl(current?.name ?? '', e.target.value),
+            })
+          }
         />
       </Field>
       <Field label="Fuso horário">
@@ -953,11 +969,15 @@ function SiteForm({ site, tenantId, onDone }) {
           inputMode="url"
           placeholder="https://192.168.0.10:8443"
           value={f.zela_pass_url}
-          onChange={(e) => setF({ ...f, zela_pass_url: e.target.value })}
+          onChange={(e) => {
+            setUrlTouched(e.target.value.trim() !== '');
+            setF({ ...f, zela_pass_url: e.target.value });
+          }}
         />
         <span className="mt-1 block text-xs text-on-surface-variant">
-          Endereço do computador Edge deste local, na rede dos tablets. Com ele, a tela de Leitores
-          gera o link para abrir o Zela Pass.
+          Sugerido a partir da organização e do nome do local; pode editar. Com ele, a tela de
+          Leitores gera o link para abrir o Zela Pass. O nome só funciona depois de existir no
+          DuckDNS e apontar para o Edge deste local.
         </span>
       </Field>
       <button type="submit" className={BTN_PRIMARY} disabled={busy}>
