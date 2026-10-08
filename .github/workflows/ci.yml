@@ -65,6 +65,8 @@ jobs:
           node scripts/check-rbac-drift.mjs
       - name: E2E do Edge Agent com a nuvem (edge-gateway, ingestao, atuacao)
         run: node apps/edge-agent/e2e/cloud-slice.e2e.mjs
+      - name: E2E do terminal Standalone simulado (roster, pessoa na evidência, alarme de porta)
+        run: node apps/edge-agent/e2e/device-alarm.e2e.mjs
       - name: E2E do comando remoto de abertura (gateway assina, agente verifica e abre)
         run: node apps/edge-agent/e2e/device-command.e2e.mjs
         env:
