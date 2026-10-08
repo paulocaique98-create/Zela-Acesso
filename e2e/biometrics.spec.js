@@ -50,6 +50,9 @@ test.describe('biometria: politica, consentimento e perfil (Fase 7C, UI)', () =>
     await expect(submit).toBeEnabled();
     await submit.click();
     await expect(page.getByText('Biometria cadastrada.')).toBeVisible();
+    // o código de captura (8 hex) aparece para o operador levar ao leitor
+    await expect(enroll.getByLabel('Código de captura')).toHaveText(/^[0-9a-f]{8}$/);
+    await enroll.getByRole('button', { name: 'Concluir' }).click();
     const table = page.getByRole('table', { name: 'Perfis biométricos' });
     const row = table.getByRole('row', { name: new RegExp(PERSON) });
     await expect(row.getByRole('cell', { name: 'Ativo' })).toBeVisible();
@@ -73,7 +76,7 @@ test.describe('biometria: politica, consentimento e perfil (Fase 7C, UI)', () =>
       .from('biometric_profiles')
       .select('template_ref')
       .eq('tenant_id', org.id);
-    expect(prof?.[0]?.template_ref).toMatch(/^mock:/); // referencia segue ate o provedor confirmar a eliminacao
+    expect(prof?.[0]?.template_ref).toMatch(/^face:/); // referencia segue ate o provedor confirmar a eliminacao
 
     // Isolamento: outra organizacao (sem o modulo) nao ve nada
     const ctx = await browser.newContext();

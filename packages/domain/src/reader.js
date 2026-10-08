@@ -3,16 +3,17 @@
 // transporte (HTTPS, WebSocket, TCP/IP): o envelope é JSON; `body` vai como TEXTO e a assinatura cobre o hash desse texto.
 
 /** @typedef {'pending' | 'active' | 'revoked'} ReaderStatus */
-/** @typedef {'pin' | 'qr' | 'barcode'} ReaderMethod */
-/** @typedef {'enroll' | 'attempt' | 'status'} ReaderMessageType */
+/** @typedef {'pin' | 'qr' | 'barcode' | 'face'} ReaderMethod */
+/** @typedef {'enroll' | 'attempt' | 'status' | 'face_enroll'} ReaderMessageType */
 /** @typedef {'REGISTERED' | 'NOT_AUTHORIZED' | 'INVALID_CREDENTIAL' | 'CHALLENGE_REQUIRED' | 'UNAVAILABLE'} ReaderOutcome */
 
 export const READER_PROTOCOL_VERSION = 1;
 export const READER_STATUSES = ['pending', 'active', 'revoked'];
-export const READER_METHODS = ['pin', 'qr', 'barcode'];
-export const READER_MESSAGE_TYPES = ['enroll', 'attempt', 'status'];
+export const READER_METHODS = ['pin', 'qr', 'barcode', 'face'];
+export const READER_MESSAGE_TYPES = ['enroll', 'attempt', 'status', 'face_enroll'];
 export const READER_TRANSPORTS = ['https', 'websocket', 'tcp'];
 export const POINT_ACTUATIONS = ['driver', 'none'];
+export const POINT_SECOND_FACTORS = ['none', 'pin'];
 
 export const READER_NAME_MIN = 2;
 export const READER_NAME_MAX = 120;
@@ -24,10 +25,19 @@ export const READER_STATUS_LABEL = {
   active: 'Ativo',
   revoked: 'Revogado',
 };
-export const READER_METHOD_LABEL = { pin: 'Senha', qr: 'QR Code', barcode: 'Código de barras' };
+export const READER_METHOD_LABEL = {
+  pin: 'Senha',
+  qr: 'QR Code',
+  barcode: 'Código de barras',
+  face: 'Facial',
+};
 export const POINT_ACTUATION_LABEL = {
   driver: 'Com atuação (abre porta/catraca)',
   none: 'Somente registro (sem atuar)',
+};
+export const POINT_SECOND_FACTOR_LABEL = {
+  none: 'Nenhum (só o método de entrada)',
+  pin: 'Facial + senha (PIN) da mesma pessoa',
 };
 /** Texto curto mostrado no leitor: nunca o motivo detalhado (fica na evidência). */
 export const READER_OUTCOME_LABEL = {
@@ -42,7 +52,11 @@ const DEVICE_EVENT_RE = /^[A-Za-z0-9_.:-]{8,64}$/;
 const NONCE_RE = /^[0-9a-f]{16,64}$/;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const ENROLL_CODE_RE = /^zrd_[0-9a-f]{64}$/;
+const CHALLENGE_RE = /^[0-9a-f]{32}$/;
 const PUB_RE = /^[0-9a-f]{64}$/;
+const FACE_B64_RE = /^[A-Za-z0-9+/]{683}=$/; // 128 floats (512 bytes) em base64: 683 caracteres + '='
+const FACE_LIVENESS = ['PASSED', 'FAILED', 'UNSUPPORTED'];
+const FACE_CODE_RE = /^[0-9a-f]{8}$/;
 const SIG_RE = /^[0-9a-f]{128}$/;
 const IDENTIFIER_RE = /^[0-9A-Za-z._-]{1,40}$/;
 // eslint-disable-next-line no-control-regex
@@ -128,16 +142,31 @@ export function parseEnrollBody(raw) {
 /**
  * Corpo de `attempt`.
  *  - pin: { method:'pin', identifier, pin }   (identificador = matrícula/identificador da pessoa)
+ *  - pin (2º fator): { method:'pin', challengeId, pin }   (confirma um desafio aberto pelo facial; a pessoa vem do desafio)
  *  - qr: { method:'qr', value }               (token móvel)
  *  - barcode: { method:'barcode', value }     (número de cartão/credencial)
+ *  - face: { method:'face', d, lv }           (d = vetor de 128 floats em base64; lv = prova de vida do aparelho)
  * @param {unknown} raw texto JSON ou objeto
- * @returns {{ ok: true, value: { method: ReaderMethod, deviceEventId: string, identifier?: string, pin?: string, value?: string } } | { ok: false, code: string }}
+ * @returns {{ ok: true, value: { method: ReaderMethod, deviceEventId: string, identifier?: string, pin?: string, challengeId?: string, value?: string, descriptor?: string, liveness?: 'PASSED' | 'FAILED' | 'UNSUPPORTED' } } | { ok: false, code: string }}
  */
 export function parseAttemptBody(raw) {
   const o = safeJson(raw);
   const bad = { ok: false, code: 'MALFORMED' };
   if (!o || !READER_METHODS.includes(o.method)) return bad;
   if (typeof o.deviceEventId !== 'string' || !DEVICE_EVENT_RE.test(o.deviceEventId)) return bad;
+  if (o.method === 'pin' && o.challengeId !== undefined) {
+    if (typeof o.challengeId !== 'string' || !CHALLENGE_RE.test(o.challengeId)) return bad;
+    if (typeof o.pin !== 'string' || !/^[0-9]{6,8}$/.test(o.pin)) return bad;
+    return {
+      ok: true,
+      value: {
+        method: 'pin',
+        deviceEventId: o.deviceEventId,
+        challengeId: o.challengeId,
+        pin: o.pin,
+      },
+    };
+  }
   if (o.method === 'pin') {
     if (typeof o.identifier !== 'string' || !IDENTIFIER_RE.test(o.identifier)) return bad;
     if (typeof o.pin !== 'string' || !/^[0-9]{6,8}$/.test(o.pin)) return bad;
@@ -151,10 +180,45 @@ export function parseAttemptBody(raw) {
       },
     };
   }
+  if (o.method === 'face') {
+    // Só o vetor facial (128 floats) e o resultado da prova de vida no aparelho; nunca imagem.
+    if (typeof o.d !== 'string' || o.d.length !== 684 || !FACE_B64_RE.test(o.d)) return bad;
+    if (!FACE_LIVENESS.includes(o.lv)) return bad;
+    return {
+      ok: true,
+      value: { method: 'face', deviceEventId: o.deviceEventId, descriptor: o.d, liveness: o.lv },
+    };
+  }
   if (typeof o.value !== 'string' || o.value.length < 4 || o.value.length > READER_VALUE_MAX)
     return bad;
   if (CONTROL_RE.test(o.value)) return bad;
   return { ok: true, value: { method: o.method, deviceEventId: o.deviceEventId, value: o.value } };
+}
+
+/**
+ * Corpo de `face_enroll`: código curto de captura (8 hex do id do perfil, mostrado no painel) + vetor facial.
+ * @param {unknown} raw
+ * @returns {{ ok: true, value: { code: string, descriptor: string, liveness: 'PASSED' | 'FAILED' | 'UNSUPPORTED' } } | { ok: false, code: string }}
+ */
+export function parseFaceEnrollBody(raw) {
+  const o = safeJson(raw);
+  if (!o || typeof o.code !== 'string' || !FACE_CODE_RE.test(o.code))
+    return { ok: false, code: 'MALFORMED' };
+  if (typeof o.d !== 'string' || !FACE_B64_RE.test(o.d) || o.d.length !== 684)
+    return { ok: false, code: 'MALFORMED' };
+  if (!FACE_LIVENESS.includes(o.lv)) return { ok: false, code: 'MALFORMED' };
+  return { ok: true, value: { code: o.code, descriptor: o.d, liveness: o.lv } };
+}
+
+/**
+ * Código de captura (8 hex): os 8 primeiros caracteres do ID DO PERFIL biométrico. O painel lê o id do perfil (o
+ * navegador nunca lê `template_ref`) e o Edge o recebe no snapshot; null se não for um uuid.
+ */
+export function faceCaptureCode(profileId) {
+  const m = /^([0-9a-f]{8})-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.exec(
+    String(profileId),
+  );
+  return m ? m[1] : null;
 }
 
 /**

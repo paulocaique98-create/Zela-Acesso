@@ -312,6 +312,17 @@ export async function handle(req, deps) {
       // false = agente invalido OU perfil nao elegivel (ja apagado / outro tenant); a RPC nao distingue, o gateway tambem nao.
       return json(200, { confirmed: data === true });
     }
+    case 'face_captured': {
+      // Facial: o Edge capturou o rosto; so o fato volta a nuvem (nunca vetor/imagem). Idempotente.
+      const profile = typeof body.profileId === 'string' ? body.profileId : '';
+      if (!AGENT_ID_RE.test(profile)) return json(400, { error: 'invalid_body' });
+      const { data, error } = await deps.rpc('edge_report_face_captured', {
+        ...base,
+        p_profile: profile,
+      });
+      if (error) return fail();
+      return json(200, { recorded: data === true });
+    }
     case 'reader_enrolled': {
       // Zela Pass (D-027): o Edge conferiu o codigo e registrou a chave publica do leitor; reflete na nuvem.
       const reader = typeof body.readerId === 'string' ? body.readerId : '';

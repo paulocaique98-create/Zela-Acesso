@@ -6,11 +6,18 @@ import { evaluateBiometric, resolveBiometricPolicy } from '@zela/biometrics';
 import { loadCache } from './snapshot.js';
 
 /**
- * @param {{ store: object, personId: string, accessPointId: string, now: Date,
+ * @param {{ store: object, personId: string, accessPointId: string, now: Date, sample?: unknown,
  *           provider?: import('@zela/biometrics').BiometricProvider | null }} input
  * @returns {Promise<{ accepted: boolean, reasonCode: string }>}
  */
-export async function verifyBiometricAttempt({ store, personId, accessPointId, now, provider }) {
+export async function verifyBiometricAttempt({
+  store,
+  personId,
+  accessPointId,
+  now,
+  provider,
+  sample,
+}) {
   const index = loadCache(store)?.index;
   if (!index) return { accepted: false, reasonCode: 'BIOMETRIC_POLICY_MISSING' };
   const profile = index.biometricProfileByPerson.get(personId) ?? null;
@@ -23,7 +30,12 @@ export async function verifyBiometricAttempt({ store, personId, accessPointId, n
     return { accepted: false, reasonCode: 'BIOMETRIC_PROVIDER_UNAVAILABLE' };
   let result;
   try {
-    result = await provider.verify({ subjectRef: profile.templateRef, deviceId: accessPointId });
+    // `sample` é a amostra do momento (vetor + prova de vida), só em memória: nunca registrada.
+    result = await provider.verify({
+      subjectRef: profile.templateRef,
+      deviceId: accessPointId,
+      ...(sample === undefined ? {} : { sample }),
+    });
   } catch {
     result = null;
   }

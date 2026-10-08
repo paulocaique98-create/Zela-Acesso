@@ -402,3 +402,59 @@ describe('evaluateAccess', () => {
     expect(json).not.toMatch(/123456|abc"/);
   });
 });
+
+describe('evaluateAccess — segundo fator por ponto', () => {
+  const bio = { id: 'c1', personId: 'p1', status: 'active', expiresAt: null, kind: 'biometric' };
+  const ok = { accepted: true, reasonCode: 'BIOMETRIC_MATCH' };
+  const withPin = (over = {}) =>
+    ctx({ credential: bio, biometric: ok, accessPoint: ap({ secondFactor: 'pin' }), ...over });
+
+  it('facial aceito num ponto com PIN vira CHALLENGE (MULTI_FACTOR_REQUIRED)', () => {
+    const d = evaluateAccess(withPin());
+    expect(d).toMatchObject({ decision: 'CHALLENGE', reasonCode: 'MULTI_FACTOR_REQUIRED' });
+    expect(d.evidence.steps).toContain('second_factor:required');
+  });
+  it('libera quando o segundo fator foi confirmado', () => {
+    const d = evaluateAccess(withPin({ challengeSatisfied: true }));
+    expect(d).toMatchObject({ decision: 'ALLOW', reasonCode: 'POLICY_MATCH' });
+    expect(d.evidence.steps).toContain('challenge:satisfied');
+  });
+  it('segundo fator recusado nega como credencial inválida (não reabre o desafio)', () => {
+    const d = evaluateAccess(withPin({ challengeFailed: true }));
+    expect(d).toMatchObject({ decision: 'DENY', reasonCode: 'CREDENTIAL_INVALID' });
+    expect(d.evidence.steps).toContain('challenge:failed');
+  });
+  it('só endurece: confirmar o 2º fator não salva negação de política nem facial recusado', () => {
+    expect(evaluateAccess(withPin({ policies: [], challengeSatisfied: true })).decision).toBe(
+      'DENY',
+    );
+    expect(
+      evaluateAccess(
+        withPin({ biometric: { accepted: false, reasonCode: 'X' }, challengeSatisfied: true }),
+      ).decision,
+    ).toBe('DENY');
+  });
+  it('não afeta credencial que não é biométrica nem ponto sem segundo fator', () => {
+    expect(evaluateAccess(ctx({ accessPoint: ap({ secondFactor: 'pin' }) })).decision).toBe(
+      'ALLOW',
+    );
+    expect(evaluateAccess(ctx({ credential: bio, biometric: ok })).decision).toBe('ALLOW');
+    expect(
+      evaluateAccess(
+        ctx({ credential: bio, biometric: ok, accessPoint: ap({ secondFactor: 'none' }) }),
+      ).decision,
+    ).toBe('ALLOW');
+  });
+  it('emergência fail-safe continua liberando (software não bloqueia saída segura)', () => {
+    expect(evaluateAccess(withPin({ emergencyActive: true })).decision).toBe('ALLOW');
+  });
+  it('offline: sem confirmação nunca abre, mesmo em degraded_allow', () => {
+    const d = evaluateAccess(
+      withPin({
+        offline: true,
+        accessPoint: ap({ secondFactor: 'pin', offlineBehavior: 'degraded_allow' }),
+      }),
+    );
+    expect(d.decision).toBe('CHALLENGE');
+  });
+});

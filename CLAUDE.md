@@ -48,4 +48,4 @@ Segurança → integridade → isolamento → correção → confiabilidade → 
 implementação + segurança + testes executados + tratamento de erro + auditoria + documentação + isolamento tenant. Distinguir sempre: IMPLEMENTADO / TESTADO / VALIDADO / NÃO TESTADO / PENDENTE / HIPÓTESE.
 
 ## Resposta
-RESUMO · ALTERAÇÕES · VALIDAÇÃO · RESULTADO · PENDÊNCIAS. Ao concluir tarefa, lembrar `/clear`.
+Ao concluir uma sessão, enviar sempre, nesta ordem: RESUMO · ALTERAÇÕES · VALIDAÇÃO · PENDÊNCIAS · RECOMENDAÇÕES PARA AGORA (próximos passos sugeridos, com o que fazer primeiro). Ao concluir tarefa, lembrar `/clear`.

@@ -29,7 +29,7 @@ for (const dist of DISTS) {
 }
 
 const hits = [];
-for (const f of files.filter((x) => /\.(js|css|html|map|json)$/.test(x))) {
+for (const f of files.filter((x) => /\.(m?js|css|html|map|json)$/.test(x))) {
   const text = readFileSync(f, 'utf8');
   for (const [re, label] of PATTERNS) if (re.test(text)) hits.push(`${f}: ${label}`);
 }

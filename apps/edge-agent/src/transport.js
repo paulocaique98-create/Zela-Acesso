@@ -64,6 +64,7 @@ export function createHttpTransport({
     reportCommandResult: (commandId, status, code) =>
       call({ op: 'report_command_result', commandId, status, code }),
     confirmBiometricErasure: (profileId) => call({ op: 'confirm_biometric_erasure', profileId }),
+    reportFaceCaptured: (profileId) => call({ op: 'face_captured', profileId }),
     commandKeys: () => call({ op: 'command_keys' }),
     reportReaderEnrolled: (readerId, publicKey, label) =>
       call({ op: 'reader_enrolled', readerId, publicKey, label }),

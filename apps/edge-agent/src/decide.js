@@ -82,6 +82,7 @@ function resolveCredential(store, index, tenantId, cred, now, cfg) {
  *   offline?: boolean,                 // padrão true: sem confirmação de que a nuvem está acessível
  *   emergencyActive?: boolean,
  *   biometric?: { accepted: boolean, reasonCode: string },  // resultado de verifyBiometricAttempt; ausente = recusa
+ *   secondFactor?: { pin: string },    // confirmação do desafio do ponto (`second_factor = 'pin'`): PIN da MESMA pessoa
  *   device?: { trusted: boolean } | null,
  *   reader?: { readerId: string, method: string, mode: 'register_only' | 'actuate' } | null,  // Zela Pass (D-027)
  *   config?: Partial<typeof DEFAULT_CONFIG>,
@@ -115,6 +116,29 @@ export function processAccessAttempt(input) {
         ? 'degraded_deny'
         : (point?.offlineBehavior ?? 'degraded_deny');
 
+    // Segundo fator por ponto: o PIN confirma a pessoa já reconhecida pelo facial (mesmo bloqueio por tentativas do PIN).
+    // Só é conferido quando o ponto exige e há credencial resolvida; recusa = `challengeFailed` (motor nega).
+    const secondFactorSteps = [];
+    let challengeSatisfied = false;
+    let challengeFailed = false;
+    if (input.secondFactor && point?.secondFactor === 'pin' && credential) {
+      const r = resolveCredential(
+        store,
+        index,
+        snap.tenantId,
+        { type: 'pin', personId: credential.personId, pin: input.secondFactor.pin },
+        now,
+        cfg,
+      );
+      challengeSatisfied = r.credential?.personId === credential.personId;
+      challengeFailed = !challengeSatisfied;
+      secondFactorSteps.push(
+        challengeSatisfied
+          ? 'second_factor:pin_ok'
+          : `second_factor:${r.steps[0] ?? 'pin:mismatch'}`,
+      );
+    }
+
     // Anti-passback local (estado em `presence`); só com pessoa e ponto conhecidos.
     let apb = null;
     if (person && point && zone) {
@@ -141,6 +165,7 @@ export function processAccessAttempt(input) {
         status: point?.status ?? 'inactive',
         emergencyBehavior: point?.emergencyBehavior ?? 'fail_safe',
         offlineBehavior,
+        secondFactor: point?.secondFactor === 'pin' ? 'pin' : 'none',
       },
       credential: credential
         ? {
@@ -152,6 +177,8 @@ export function processAccessAttempt(input) {
           }
         : null,
       biometric: input.biometric,
+      challengeSatisfied,
+      challengeFailed,
       person: person ? { id: person.id, status: person.status } : null,
       groupIds: person ? (index.groupsByPerson.get(person.id) ?? []) : [],
       policies: snap?.policies ?? [],
@@ -177,6 +204,7 @@ export function processAccessAttempt(input) {
         : [];
     for (const s of [
       ...credSteps,
+      ...secondFactorSteps,
       ...bioSteps,
       ...(stale && offline ? ['cache:stale'] : []),
       ...clockSteps,

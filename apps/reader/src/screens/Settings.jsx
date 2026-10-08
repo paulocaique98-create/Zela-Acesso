@@ -61,11 +61,12 @@ export function Gate({ onVerify, onBack }) {
 }
 
 /** Menu do operador (equivalente funcional ao menu de configurações da referência). */
-export function Menu({ identity, onGo, onExit }) {
+export function Menu({ identity, face = false, onGo, onExit }) {
   const items = [
     ['config', 'Configurações do Sistema'],
     ['info', 'Informações do Sistema'],
     ['records', 'Registros'],
+    ...(face ? [['faceEnroll', 'Cadastro facial']] : []),
   ];
   return (
     <div className="flex h-full flex-col">

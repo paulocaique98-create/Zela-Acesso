@@ -139,7 +139,23 @@ export function evaluateAccess(ctx) {
     /** @type {AccessDecision['reasonCode']} */
     let reason = pol.reason;
 
-    // 7. Desafio (segundo fator) já satisfeito pelo chamador.
+    // 6b. Segundo fator por ponto: credencial biométrica (facial) liberada pela política vira CHALLENGE até o chamador
+    // confirmar o segundo fator da MESMA pessoa. Só endurece: nunca transforma negação em liberação.
+    if (
+      decision === 'ALLOW' &&
+      ctx.accessPoint.secondFactor === 'pin' &&
+      cred.kind === 'biometric'
+    ) {
+      decision = 'CHALLENGE';
+      reason = 'MULTI_FACTOR_REQUIRED';
+      steps.push('second_factor:required');
+    }
+
+    // 7. Desafio (segundo fator) já satisfeito pelo chamador; segundo fator recusado nega (nunca reabre o desafio).
+    if (decision === 'CHALLENGE' && ctx.challengeFailed === true) {
+      steps.push('challenge:failed');
+      return out('DENY', 'CREDENTIAL_INVALID', pol.policyId);
+    }
     if (decision === 'CHALLENGE' && ctx.challengeSatisfied === true) {
       decision = 'ALLOW';
       reason = 'POLICY_MATCH';

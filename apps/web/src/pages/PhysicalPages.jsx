@@ -17,6 +17,8 @@ import {
   OFFLINE_BEHAVIORS,
   OFFLINE_BEHAVIOR_LABEL,
   POINT_ACTUATIONS,
+  POINT_SECOND_FACTORS,
+  POINT_SECOND_FACTOR_LABEL,
   POINT_ACTUATION_LABEL,
   accessPointWarnings,
   validateDoorOpenTimeout,
@@ -328,6 +330,7 @@ function AccessPointForm({ point, sites, zones, schedules, tenantId, onDone }) {
     direction: point?.direction ?? 'bidirectional',
     status: point?.status ?? 'active',
     actuation: point?.actuation ?? 'driver',
+    second_factor: point?.second_factor ?? 'none',
     controller_ref: point?.controller_ref ?? '',
     entry_reader_ref: point?.entry_reader_ref ?? '',
     exit_reader_ref: point?.exit_reader_ref ?? '',
@@ -356,6 +359,7 @@ function AccessPointForm({ point, sites, zones, schedules, tenantId, onDone }) {
       direction: f.direction,
       status: f.status,
       actuation: f.actuation,
+      second_factor: f.second_factor,
       controller_ref: ref('controller_ref'),
       entry_reader_ref: ref('entry_reader_ref'),
       exit_reader_ref: ref('exit_reader_ref'),
@@ -462,6 +466,18 @@ function AccessPointForm({ point, sites, zones, schedules, tenantId, onDone }) {
         <p role="note" className="text-sm text-on-surface-variant">
           Somente registro: o ponto identifica e registra a entrada/saída (por exemplo, num leitor
           Zela Pass), mas nunca envia comando para porta, catraca ou cancela.
+        </p>
+      )}
+      {select(
+        'Segundo fator (facial)',
+        'second_factor',
+        POINT_SECOND_FACTORS,
+        POINT_SECOND_FACTOR_LABEL,
+      )}
+      {f.second_factor === 'pin' && (
+        <p role="note" className="text-sm text-on-surface-variant">
+          Quem entra pelo facial precisa também digitar a própria senha (PIN). Recomendado em áreas
+          críticas enquanto a proteção contra foto ou tela diante da câmera não tiver sido validada.
         </p>
       )}
       <Field label="Janela de acesso (opcional)">
@@ -614,7 +630,7 @@ export function AccessPointsPage() {
       supabase
         .from('access_points')
         .select(
-          'id, site_id, zone_id, name, description, type, direction, status, controller_ref, entry_reader_ref, exit_reader_ref, sensor_ref, relay_ref, schedule_id, emergency_behavior, offline_behavior, door_open_timeout_seconds, actuation',
+          'id, site_id, zone_id, name, description, type, direction, status, controller_ref, entry_reader_ref, exit_reader_ref, sensor_ref, relay_ref, schedule_id, emergency_behavior, offline_behavior, door_open_timeout_seconds, actuation, second_factor',
         )
         .eq('tenant_id', tenantId)
         .order('name')

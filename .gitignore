@@ -16,3 +16,8 @@ supabase/.branches/
 CLAUDE_ZELA_ACESSO.md
 .playwright-browsers/
 backups/
+
+# Facial: modelos e WASM copiados por scripts/fetch-face-models.mjs (nao versionar binarios)
+apps/reader/public/models/
+.cache/
+apps/reader/public/ort/

@@ -8,7 +8,7 @@ const HEX64 = /^[0-9a-f]{64}$/i;
 /**
  * @param {Record<string, string | undefined>} env
  * @returns {{ gatewayUrl: string, agentId: string, agentSecret: string, dbPath: string, version: string,
- *   commandKeys: string[], commandPubKeys: Record<string, string>, commandTofu: boolean, deviceKey: string | null, storeKey: string | null, driver: 'none' | 'mock' | 'controlid', controlIdPoints: Record<string, any>, monitor: { bind: string, port: number, secret: string, advertise: string } | null, reader: { bind: string, port: number, tcpPort: number | null, tlsCert: string | null, tlsKey: string | null, webDir: string | null } | null, mockPoints: string[], tickMs: number }}
+ *   commandKeys: string[], commandPubKeys: Record<string, string>, commandTofu: boolean, deviceKey: string | null, storeKey: string | null, face: boolean, driver: 'none' | 'mock' | 'controlid', controlIdPoints: Record<string, any>, monitor: { bind: string, port: number, secret: string, advertise: string } | null, reader: { bind: string, port: number, tcpPort: number | null, tlsCert: string | null, tlsKey: string | null, webDir: string | null } | null, mockPoints: string[], tickMs: number }}
  */
 export function loadConfig(env) {
   const need = (k) => {
@@ -58,6 +58,10 @@ export function loadConfig(env) {
   if (storeKey && !HEX64.test(storeKey)) throw new Error('EDGE_STORE_KEY deve ter 64 hex');
   if (!storeKey && env.NODE_ENV === 'production')
     throw new Error('EDGE_STORE_KEY é obrigatória em produção');
+
+  // Facial (leitor em tablet/celular): desligado por padrão (biometria é opt-in). Em produção o gabarito só existe
+  // com o armazenamento cifrado, porque EDGE_STORE_KEY já é obrigatória acima.
+  const face = env.EDGE_FACE?.trim() === '1';
 
   // Driver Control iD (D-023): pontos por JSON (senha só por variável apontada em passwordEnv) + receptor do Monitor.
   let controlIdPoints = {};
@@ -148,6 +152,7 @@ export function loadConfig(env) {
     commandTofu,
     deviceKey,
     storeKey,
+    face,
     driver,
     controlIdPoints,
     monitor,

@@ -54,6 +54,19 @@ Detalhes em `25-ZELA-PASS-DESENHO.md`. Estado: IMPLEMENTADO e TESTADO local; **s
 | Código de ativação interceptado | B | M | Alta entropia, uso único, 24 h, só hash no banco/snapshot, mostrado uma vez — TESTADO | Baixo/Médio até o uso |
 | Edge comprometido | B | A | Fora do escopo do leitor: mesmo risco do agente (ver acima); leitor revogado não ajuda | Ver Edge |
 
+## Facial no Zela Pass (D-028, 08/10/2026)
+
+| Ameaça | Mitigação (estado) | Evidência | Risco residual |
+|---|---|---|---|
+| Foto, tela ou vídeo diante da câmera (ataque de apresentação) | Liveness passiva do Human (antispoof + liveness, mediana de 5 quadros) exigida pela política (`require_liveness`, padrão sim) — IMPLEMENTADO; eficácia **NÃO validada** | `summarize.test.js`; E2E `face.browser.mjs`; sem teste ISO/IEC 30107-3 | **Alto** sem 2º fator; **Médio** com o segundo fator do ponto ligado (PIN depois do facial, D-031, `reader-face.test.js`) até haver teste de ataque de apresentação |
+| Aparelho/leitor comprometido envia vetor ou liveness falsos | Mensagem assinada Ed25519 por aparelho, anti-replay, relógio, limite de taxa, revogação na nuvem; decisão final no Edge — IMPLEMENTADO e TESTADO | `reader-service.test.js`, `reader-face.test.js` | **Médio**: vetor e liveness vêm do aparelho; recalcular no Edge não foi feito |
+| Roubo do gabarito (disco do Edge) | AES-256-GCM em repouso, `EDGE_STORE_KEY` obrigatória em produção — IMPLEMENTADO e TESTADO | `face-provider.test.js` | Chave no ambiente da mesma máquina (ver linha "Roubo do cache offline") |
+| Imagem do rosto vazando | Imagem só no `<video>`/canvas do tablet; nunca gravada nem enviada; só o vetor sai — IMPLEMENTADO | E2E confere IndexedDB/localStorage e fila do Edge | Navegador do tablet fora do nosso controle (extensões, espelhamento de tela) |
+| Pessoa cadastrada por quem não deveria / rosto sob duas identidades | Cadastro só com perfil criado no painel (consentimento registrado, permissão `biometric:enroll`), código de uso único, não sobrescreve, recusa rosto já cadastrado, PIN do operador no tablet — IMPLEMENTADO e TESTADO | `reader-face.test.js` | Código de captura em tela do painel (8 hex); quem tem o código e um leitor ativado captura uma vez |
+| Falso aceite entre pessoas parecidas | Limiar da organização (mín. 0,80), margem 1:N de 0,05, recusa de ambíguo — IMPLEMENTADO | `face-provider.test.js`; benchmark `26-` | Sem medição com a população real nem recorte demográfico: **PENDENTE** |
+| Negação de serviço (tentativas em massa) | 30 tentativas/min por leitor, teto por origem antes de autenticar — herdado do Zela Pass | `reader-service.test.js` | Custo de CPU do 1:N cresce com o número de gabaritos (linear) |
+| Retenção/eliminação (LGPD) | Retenção, revogação e expiração apagam o gabarito pela fila de eliminação e confirmam à nuvem — IMPLEMENTADO e TESTADO | `reader-face.test.js` (eliminação) | Cópias de segurança do SQLite do Edge não são tratadas |
+
 ## Resumo do checkpoint de segurança (§70)
 
 - Isolamento, RBAC, auditoria e comando assinado têm cobertura automatizada sólida.

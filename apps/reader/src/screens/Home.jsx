@@ -1,5 +1,15 @@
 import { useEffect, useState } from 'react';
-import { Cloud, CloudOff, Lock, QrCode, Radio, Settings, Wifi, WifiOff } from 'lucide-react';
+import {
+  Cloud,
+  CloudOff,
+  Lock,
+  QrCode,
+  Radio,
+  ScanFace,
+  Settings,
+  Wifi,
+  WifiOff,
+} from 'lucide-react';
 import { Logo } from '../ui/parts.jsx';
 
 const MODE_LABEL = { register_only: 'Somente registro', actuate: 'Com atuação' };
@@ -18,8 +28,8 @@ function Indicator({ on, Icon, OffIcon, label }) {
   );
 }
 
-/** Tela de quiosque: relógio (hora do Edge), indicadores, QR/barras e teclado. Facial só existe com o módulo ligado. */
-export function Home({ link, clock, identity, onQr, onKeypad, onSettings }) {
+/** Tela de quiosque: relógio (hora do Edge), indicadores, QR/barras, teclado e facial. O botão Facial só aparece quando o Edge informa que o módulo e a política biométrica estão ativos. */
+export function Home({ link, clock, identity, onQr, onKeypad, onFace, onSettings }) {
   const [, tick] = useState(0);
   useEffect(() => {
     const t = setInterval(() => tick((n) => n + 1), 1000);
@@ -101,6 +111,17 @@ export function Home({ link, clock, identity, onQr, onKeypad, onSettings }) {
           <QrCode size={56} aria-hidden="true" />
           <span className="text-base">QR Code / Barras</span>
         </button>
+        {link.face && (
+          <button
+            type="button"
+            onClick={onFace}
+            disabled={blocked}
+            className="flex min-w-32 flex-col items-center gap-2 rounded-zela-lg p-3 hover:bg-kiosk-raised focus-visible:outline-2 focus-visible:outline-accent disabled:opacity-40"
+          >
+            <ScanFace size={56} aria-hidden="true" />
+            <span className="text-base">Facial</span>
+          </button>
+        )}
         <button
           type="button"
           onClick={onKeypad}

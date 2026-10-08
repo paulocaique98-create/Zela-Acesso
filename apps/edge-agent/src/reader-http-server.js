@@ -26,11 +26,15 @@ const MIME = {
   '.png': 'image/png',
   '.ico': 'image/x-icon',
   '.woff2': 'font/woff2',
+  '.mjs': 'text/javascript; charset=utf-8',
+  '.wasm': 'application/wasm',
+  '.onnx': 'application/octet-stream',
+  '.bin': 'application/octet-stream',
 };
 
 export const SECURITY_HEADERS = {
   'content-security-policy':
-    "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' ws: wss:; " +
+    "default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self'; img-src 'self' data: blob:; connect-src 'self' ws: wss:; " +
     "worker-src 'self'; manifest-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'",
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'no-referrer',
@@ -96,9 +100,16 @@ export function createReaderHttpServer({
     }
     const data = await readFile(file);
     const hashed = file.startsWith(join(root, 'assets') + sep);
+    // Modelos do facial (dezenas de MB, nome fixo): cache de 1 dia; o service worker guarda para uso sem rede.
+    const heavy =
+      file.startsWith(join(root, 'models') + sep) || file.startsWith(join(root, 'ort') + sep);
     res.writeHead(200, {
       'content-type': MIME[extname(file)] ?? 'application/octet-stream',
-      'cache-control': hashed ? 'public, max-age=31536000, immutable' : 'no-cache',
+      'cache-control': hashed
+        ? 'public, max-age=31536000, immutable'
+        : heavy
+          ? 'public, max-age=86400'
+          : 'no-cache',
       ...SECURITY_HEADERS,
     });
     res.end(req.method === 'HEAD' ? undefined : data);

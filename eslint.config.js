@@ -5,6 +5,8 @@ export default [
   {
     ignores: [
       '**/dist/**',
+      'apps/reader/public/models/**',
+      'apps/reader/public/ort/**',
       '**/coverage/**',
       '**/node_modules/**',
       '.playwright-browsers/**',

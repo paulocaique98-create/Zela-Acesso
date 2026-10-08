@@ -29,6 +29,7 @@ export function createTestReader(o = {}) {
     enroll: (code, label = 'Tablet de teste', over) =>
       envelope('enroll', { code, publicKey: keys.publicKey, label }, over),
     status: (over) => envelope('status', '{}', over),
+    faceEnroll: (fields, over) => envelope('face_enroll', fields, over),
     attempt: (fields, over) =>
       envelope('attempt', { deviceEventId: `evt-${Date.now()}-${++seq}`, ...fields }, over),
   };

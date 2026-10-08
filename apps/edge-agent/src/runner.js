@@ -6,6 +6,7 @@ import { runBiometricErasures } from './biometric.js';
 import { pollAndRunCommands } from './command-poll.js';
 import { drainQueue } from './drain.js';
 import { reportEnrolledReaders } from './reader-report.js';
+import { reportFaceCaptures } from './face-report.js';
 import { sendHeartbeat } from './heartbeat.js';
 import { syncRosters } from './roster.js';
 import { syncSnapshot } from './sync.js';
@@ -68,6 +69,9 @@ export async function runOnce({
       out.ran.push('biometricErasure');
       out.results.biometricErasure = await runBiometricErasures({ store, transport, provider });
       if (out.results.biometricErasure.status === 'revoked') return { ...out, revoked: true };
+      // Facial: avisa a nuvem dos rostos já capturados aqui (só o fato; o gabarito não sai do Edge).
+      out.results.faceCaptures = await reportFaceCaptures({ store, transport });
+      if (out.results.faceCaptures.status === 'revoked') return { ...out, revoked: true };
     }
   }
   if (commands && due('commands', iv.commandsMs)) {

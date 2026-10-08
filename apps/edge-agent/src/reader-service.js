@@ -6,20 +6,24 @@
 // nonce (anti-replay) e hash do corpo. Erros de autenticação são genéricos (sem oráculo de existência de leitor).
 // Nunca entram em log nem na evidência: PIN, token, número de cartão.
 
-import { createHash, randomUUID } from 'node:crypto';
+import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { FACE_PROVIDER_KIND, checkBiometricSettings } from '@zela/biometrics';
 import {
   READER_CLOCK_SKEW_MS,
   READER_OUTCOME_LABEL,
+  faceCaptureCode,
   isWithinReaderClockSkew,
   normalizeCardNumber,
   normalizePersonRef,
   parseAttemptBody,
   parseEnrollBody,
+  parseFaceEnrollBody,
   parseReaderEnvelope,
   readerOutcome,
   readerSigningString,
 } from '@zela/domain';
 import { handleAccessAttempt } from './access.js';
+import { verifyBiometricAttempt } from './biometric.js';
 import { processAccessAttempt } from './decide.js';
 import { sha256Hex, verifyMessage } from './keys.js';
 import { loadCache } from './snapshot.js';
@@ -31,6 +35,8 @@ export const DEFAULT_READER_LIMITS = {
   windowMs: 60_000,
   attemptRetentionMs: 24 * 3_600_000,
   maxKeys: 5_000,
+  challengeTtlMs: 60_000, // validade do desafio de 2º fator (uso único)
+  maxChallenges: 1_000,
 };
 
 const sha256 = (s) => createHash('sha256').update(s).digest('hex');
@@ -39,6 +45,7 @@ const sha256 = (s) => createHash('sha256').update(s).digest('hex');
  * @param {{
  *   store: ReturnType<import('./store.js').openStore>,
  *   driver?: import('@zela/device-drivers').HardwareDriver | null,
+ *   biometricProvider?: ReturnType<typeof import('./face-provider.js').createEdgeFaceProvider> | null, // facial (método `face`)
  *   clock?: () => Date,
  *   isOffline?: () => boolean,       // sem contato recente com a nuvem (decide se o ponto usa o comportamento offline)
  *   unlockMs?: number,
@@ -49,6 +56,7 @@ const sha256 = (s) => createHash('sha256').update(s).digest('hex');
 export function createReaderService({
   store,
   driver = null,
+  biometricProvider = null,
   clock = () => new Date(),
   isOffline = () => true,
   unlockMs,
@@ -57,6 +65,8 @@ export function createReaderService({
 }) {
   const lim = { ...DEFAULT_READER_LIMITS, ...limits };
   const buckets = new Map(); // chave -> { start, n }
+  // Desafios de 2º fator abertos pelo facial: só em memória (expiram em segundos; reiniciar o Edge obriga a refazer o facial).
+  const challenges = new Map(); // challengeId -> { readerId, pointId, personId, biometric, expiresAt }
   let calls = 0;
 
   /** Janela fixa por chave; recusa acima do teto. @returns {boolean} true se pode seguir */
@@ -146,10 +156,13 @@ export function createReaderService({
           mode: registerOnly ? 'register_only' : 'actuate',
           direction: point.direction,
           offline: isOffline(),
+          face: faceAvailable(index, now),
         },
         now,
       );
     }
+
+    if (msg.type === 'face_enroll') return faceEnroll(msg, index, now);
 
     // ---- attempt
     const body = parseAttemptBody(msg.body);
@@ -171,11 +184,44 @@ export function createReaderService({
 
     const tenantId = index.snapshot.tenantId;
     let credential;
-    if (a.method === 'pin') {
+    let biometric; // só no método facial: a verificação é assíncrona e acontece antes da decisão síncrona
+    let secondFactor;
+    if (a.challengeId) {
+      // Confirmação do 2º fator: a pessoa e a verificação facial vêm do desafio, não do que o aparelho envia agora.
+      const ch = challenges.get(a.challengeId);
+      challenges.delete(a.challengeId); // uso único, aceito ou não
+      if (!ch || ch.readerId !== msg.readerId || ch.pointId !== point.id || ch.expiresAt <= nowMs) {
+        store.saveReaderAttempt(
+          msg.readerId,
+          a.deviceEventId,
+          'INVALID_CREDENTIAL',
+          now.toISOString(),
+        );
+        return reply(
+          200,
+          {
+            ok: true,
+            code: 'OK',
+            outcome: 'INVALID_CREDENTIAL',
+            label: READER_OUTCOME_LABEL.INVALID_CREDENTIAL,
+            direction: point.direction,
+            mode: registerOnly ? 'register_only' : 'actuate',
+          },
+          now,
+        );
+      }
+      credential = { type: 'biometric', personId: ch.personId };
+      biometric = ch.biometric;
+      secondFactor = { pin: a.pin };
+    } else if (a.method === 'pin') {
       // Identificador desconhecido: id aleatório, o motor custa o mesmo tempo e responde "credencial inválida".
       const personId =
         index.peopleByRef.get(sha256(`${tenantId}:${normalizePersonRef(a.identifier)}`)) ?? newId();
       credential = { type: 'pin', personId, pin: a.pin };
+    } else if (a.method === 'face') {
+      const f = await identifyFace(index, a, point.id, now);
+      credential = { type: 'biometric', personId: f.personId };
+      biometric = f.biometric;
     } else if (a.method === 'qr') {
       credential = { type: 'mobile_token', token: a.value };
     } else {
@@ -189,6 +235,8 @@ export function createReaderService({
       now,
       offline: isOffline(),
       reader: { readerId: msg.readerId, method: a.method, mode },
+      ...(biometric ? { biometric } : {}),
+      ...(secondFactor ? { secondFactor } : {}),
     };
     const result = registerOnly
       ? processAccessAttempt(attempt)
@@ -196,6 +244,21 @@ export function createReaderService({
 
     const outcome = readerOutcome(result.decision);
     store.saveReaderAttempt(msg.readerId, a.deviceEventId, outcome, now.toISOString());
+    // Facial reconhecido num ponto com 2º fator: abre o desafio (o leitor pede o PIN e reenvia com o `challengeId`).
+    let challengeId;
+    if (
+      outcome === 'CHALLENGE_REQUIRED' &&
+      !secondFactor &&
+      credential.type === 'biometric' &&
+      result.decision.evidence.steps.includes('second_factor:required')
+    )
+      challengeId = openChallenge({
+        readerId: msg.readerId,
+        pointId: point.id,
+        personId: credential.personId,
+        biometric,
+        nowMs,
+      });
     return reply(
       200,
       {
@@ -205,9 +268,99 @@ export function createReaderService({
         label: READER_OUTCOME_LABEL[outcome],
         direction: point.direction,
         mode,
+        ...(challengeId ? { challengeId, challengeTtlMs: lim.challengeTtlMs } : {}),
       },
       now,
     );
+  }
+
+  /** Desafio de 2º fator: id de 128 bits aleatórios, uso único, curto. Sob inundação, falha fechada (não abre desafio). */
+  function openChallenge({ readerId, pointId, personId, biometric, nowMs }) {
+    if (challenges.size >= lim.maxChallenges) {
+      for (const [k, v] of challenges) if (v.expiresAt <= nowMs) challenges.delete(k);
+      if (challenges.size >= lim.maxChallenges) return undefined;
+    }
+    const id = randomBytes(16).toString('hex');
+    challenges.set(id, {
+      readerId,
+      pointId,
+      personId,
+      biometric,
+      expiresAt: nowMs + lim.challengeTtlMs,
+    });
+    return id;
+  }
+
+  const faceProvider = biometricProvider?.kind === FACE_PROVIDER_KIND ? biometricProvider : null;
+
+  /** O leitor só oferece o facial se há provedor e a política da organização está completa e vigente. */
+  function faceAvailable(index, now) {
+    return !!faceProvider && checkBiometricSettings(index.biometricSettings, now).ok;
+  }
+
+  /** Perfis ativos do provedor facial: referência do gabarito -> pessoa. */
+  function faceProfiles(index) {
+    const byRef = new Map();
+    for (const [personId, p] of index.biometricProfileByPerson)
+      if (p.provider === FACE_PROVIDER_KIND && p.templateRef) byRef.set(p.templateRef, personId);
+    return byRef;
+  }
+
+  /**
+   * Identificação 1:N e verificação. Quem não é reconhecido recebe um id aleatório: o motor responde
+   * "credencial inválida" gravando a evidência, sem revelar se havia gabarito parecido.
+   */
+  async function identifyFace(index, a, accessPointId, now) {
+    const sample = { descriptor: a.descriptor, liveness: a.liveness };
+    const byRef = faceProfiles(index);
+    const hit = faceProvider ? faceProvider.identify(sample, [...byRef.keys()]) : null;
+    if (!hit)
+      return {
+        personId: newId(),
+        biometric: {
+          accepted: false,
+          reasonCode: faceProvider ? 'BIOMETRIC_NO_MATCH' : 'BIOMETRIC_PROVIDER_UNAVAILABLE',
+        },
+      };
+    const personId = byRef.get(hit.ref);
+    const biometric = await verifyBiometricAttempt({
+      store,
+      personId,
+      accessPointId,
+      now,
+      provider: faceProvider,
+      sample,
+    });
+    return { personId, biometric };
+  }
+
+  /**
+   * Captura do gabarito facial de um perfil criado no painel (consentimento já registrado na nuvem). O código de
+   * captura (8 hex do id do perfil) é mostrado no painel; só perfil ativo, do provedor facial e SEM gabarito aceita
+   * captura, uma única vez (nunca sobrescreve). Exige prova de vida quando a política exige e recusa rosto que já
+   * pertence a outro perfil.
+   */
+  function faceEnroll(msg, index, now) {
+    const body = parseFaceEnrollBody(msg.body);
+    if (!body.ok) return fail(400, 'MALFORMED', now);
+    if (!faceAvailable(index, now)) return fail(409, 'FACE_UNAVAILABLE', now);
+    const { code, descriptor, liveness } = body.value;
+    if (index.biometricSettings.requireLiveness !== false && liveness !== 'PASSED')
+      return fail(422, 'LIVENESS_FAILED', now);
+    const pending = [...index.biometricProfileByPerson.values()].filter(
+      (p) =>
+        p.provider === FACE_PROVIDER_KIND &&
+        p.templateRef &&
+        faceCaptureCode(p.id) === code &&
+        !store.hasFaceTemplate(p.templateRef),
+    );
+    if (pending.length === 0) return fail(404, 'ENROLL_NOT_FOUND', now);
+    if (pending.length > 1) return fail(409, 'AMBIGUOUS_CODE', now);
+    const ref = pending[0].templateRef;
+    if (faceProvider.duplicateOf(descriptor, ref)) return fail(409, 'FACE_ALREADY_ENROLLED', now);
+    const r = faceProvider.enroll(ref, descriptor, now.toISOString());
+    if (r !== 'stored') return fail(409, 'ENROLL_NOT_FOUND', now);
+    return reply(200, { ok: true, code: 'OK' }, now);
   }
 
   /** Ativação: código de uso único (hash vem no snapshot) + prova de posse da chave pública. */

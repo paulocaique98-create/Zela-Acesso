@@ -69,6 +69,20 @@ export function createReaderClient({ transport, now = Date.now, identity = null 
     status: () => send('status', '{}'),
 
     /**
+     * Cadastro do gabarito facial (só o operador, tela protegida pelo PIN do aparelho). `d` é o vetor em base64.
+     * Sem reenvio automático: o Edge só aceita uma captura por código e uma segunda tentativa seria recusada.
+     * @param {{ code: string, d: string, lv: 'PASSED' | 'FAILED' | 'UNSUPPORTED' }} p
+     */
+    async faceEnroll(p) {
+      try {
+        return await send('face_enroll', { code: p.code, d: p.d, lv: p.lv });
+      } catch (e) {
+        if (!(e instanceof TransportError)) throw e;
+        return { ok: false, code: 'UNAVAILABLE' };
+      }
+    },
+
+    /**
      * Uma leitura. `deviceEventId` é gerado UMA vez por ação do usuário: se a resposta se perder, o reenvio devolve o
      * mesmo resultado (o Edge deduplica) em vez de registrar duas vezes.
      * @param {{ method: 'pin', identifier: string, pin: string } | { method: 'qr' | 'barcode', value: string }} reading

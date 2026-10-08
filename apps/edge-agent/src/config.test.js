@@ -121,3 +121,13 @@ describe('loadConfig (Fase 8A)', () => {
     });
   });
 });
+
+describe('loadConfig (facial)', () => {
+  const base = { EDGE_GATEWAY_URL: 'https://x.test', EDGE_AGENT_ID: 'a', EDGE_AGENT_SECRET: 's' };
+  it('facial desligado por padrão; liga só com EDGE_FACE=1', () => {
+    expect(loadConfig(base).face).toBe(false);
+    expect(loadConfig({ ...base, EDGE_FACE: '0' }).face).toBe(false);
+    expect(loadConfig({ ...base, EDGE_FACE: 'true' }).face).toBe(false);
+    expect(loadConfig({ ...base, EDGE_FACE: '1' }).face).toBe(true);
+  });
+});

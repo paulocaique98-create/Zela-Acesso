@@ -5,7 +5,12 @@ import { safeMessage } from '../lib/errors';
 import { supabase } from '../lib/supabase';
 import { toast } from '../lib/toast';
 import { useQuery } from '../lib/useQuery';
-import { BIOMETRIC_LEGAL_BASES, checkBiometricSettings } from '@zela/biometrics';
+import {
+  BIOMETRIC_LEGAL_BASES,
+  FACE_PROVIDER_KIND,
+  checkBiometricSettings,
+} from '@zela/biometrics';
+import { faceCaptureCode } from '@zela/domain';
 import { useWorkspace } from '../workspace/WorkspaceProvider';
 import { Guard, Status } from './DataPages';
 import { BTN_GHOST, BTN_PRIMARY, Field, INPUT, Modal, PageHead } from './RegistryPages';
@@ -24,9 +29,6 @@ const STATUS_LABEL = {
 const fmtDate = (iso) => new Date(iso).toLocaleDateString('pt-BR');
 const today = () => new Date().toISOString().slice(0, 10);
 const plusDays = (n) => new Date(Date.now() + n * 86_400_000).toISOString().slice(0, 10);
-
-/** Ainda não há provedor biométrico real (D-007): o cadastro só roda com o provedor de teste, em desenvolvimento. */
-const DEV_PROVIDER = import.meta.env.DEV;
 
 function PolicyForm({ tenantId, settings, onClose, onSaved }) {
   const [f, setF] = useState({
@@ -211,24 +213,31 @@ function EnrollForm({ tenantId, settings, people, onClose, onDone }) {
   const [busy, setBusy] = useState(false);
   const ready = f.person && f.adult && f.alt && f.notice;
 
-  const finish = async (promise, ok, fail) => {
+  const [captureCode, setCaptureCode] = useState(/** @type {string | null} */ (null));
+
+  const finish = async (promise, ok, fail, codeOf = null) => {
     setBusy(true);
-    const { error } = await promise;
+    const { data, error } = await promise;
     setBusy(false);
     if (error) return toast.error(safeMessage(error, fail));
     toast.success(ok);
-    onDone();
+    const code = codeOf ? codeOf(data) : null;
+    // com código: o modal fica aberto para o operador anotar o código de captura
+    if (code) setCaptureCode(code);
+    else onDone();
   };
 
   const enroll = (e) => {
     e.preventDefault();
-    // Gabarito nunca passa por aqui: só a referência opaca devolvida pelo provedor (teste, em desenvolvimento).
-    const ref = `mock:${crypto.randomUUID()}`;
+    // O gabarito nunca passa por aqui: só a referência opaca `face:<uuid>`. O rosto é capturado depois, no leitor
+    // (Zela Pass), com o código de captura (8 hex do id do perfil) mostrado ao final; o Edge guarda o gabarito cifrado.
+    // O navegador nunca lê `template_ref` (privilégio por coluna, fase 7C): por isso o código vem do id do perfil.
+    const ref = `face:${crypto.randomUUID()}`;
     finish(
       supabase.rpc('enroll_biometric_profile', {
         p_tenant: tenantId,
         p_person: f.person,
-        p_provider: 'mock',
+        p_provider: FACE_PROVIDER_KIND,
         p_template_ref: ref,
         p_method: f.method,
         p_adult_confirmed: f.adult,
@@ -237,6 +246,7 @@ function EnrollForm({ tenantId, settings, people, onClose, onDone }) {
       }),
       'Biometria cadastrada.',
       'Não foi possível cadastrar a biometria.',
+      (data) => faceCaptureCode(data?.profile_id),
     );
   };
 
@@ -250,6 +260,32 @@ function EnrollForm({ tenantId, settings, people, onClose, onDone }) {
       }),
       'Recusa registrada. A pessoa usa a alternativa não biométrica.',
       'Não foi possível registrar a recusa.',
+    );
+
+  if (captureCode)
+    return (
+      <Modal title="Cadastro biométrico guiado" onClose={onDone}>
+        <div className="space-y-3">
+          <p className="text-sm">
+            Consentimento e aviso registrados. Falta capturar o rosto no leitor (Zela Pass):{' '}
+            <strong>Configurações → Cadastro facial</strong>, digite o código abaixo e peça que a
+            pessoa olhe para a câmera.
+          </p>
+          <p
+            aria-label="Código de captura"
+            className="rounded-zela-lg bg-surface-container p-4 text-center font-mono text-3xl tracking-widest"
+          >
+            {captureCode}
+          </p>
+          <p className="text-sm text-on-surface-variant">
+            O código só vale para este cadastro e deixa de funcionar depois da captura. Ele pode ser
+            consultado de novo na lista de perfis.
+          </p>
+          <button type="button" className={BTN_PRIMARY} onClick={onDone}>
+            Concluir
+          </button>
+        </div>
+      </Modal>
     );
 
   return (
@@ -307,14 +343,8 @@ function EnrollForm({ tenantId, settings, people, onClose, onDone }) {
             {label}
           </label>
         ))}
-        {!DEV_PROVIDER && (
-          <p role="alert" className="text-sm text-error">
-            Nenhum provedor biométrico está integrado neste ambiente. O cadastro fica indisponível
-            até a integração (benchmark pendente).
-          </p>
-        )}
         <div className="flex flex-wrap gap-2">
-          <button type="submit" className={BTN_PRIMARY} disabled={busy || !ready || !DEV_PROVIDER}>
+          <button type="submit" className={BTN_PRIMARY} disabled={busy || !ready}>
             {busy ? 'Salvando…' : 'Cadastrar biometria'}
           </button>
           <button
@@ -346,7 +376,7 @@ export function OrgBiometricsPage() {
       supabase
         .from('biometric_profiles')
         .select(
-          'id, person_id, provider, legal_basis, status, enrolled_at, retention_until, erasure_requested_at, erasure_confirmed_at',
+          'id, person_id, provider, legal_basis, status, enrolled_at, retention_until, captured_at, erasure_requested_at, erasure_confirmed_at',
         )
         .eq('tenant_id', tenantId)
         .order('enrolled_at', { ascending: false })
@@ -476,14 +506,22 @@ export function OrgBiometricsPage() {
                         ? 'Solicitada (aguardando provedor)'
                         : '—',
                     p.status === 'active' && allowed('biometric:enroll') ? (
-                      <button
-                        key={p.id}
-                        type="button"
-                        className={`${BTN_GHOST} text-error`}
-                        onClick={() => setRevoke(p)}
-                      >
-                        Revogar
-                      </button>
+                      <span key={p.id} className="flex flex-wrap items-center gap-2">
+                        {p.provider === FACE_PROVIDER_KIND && (
+                          <span className="font-mono text-xs">
+                            {p.captured_at
+                              ? `Rosto capturado em ${fmtDate(p.captured_at)}`
+                              : `Aguardando captura · código ${faceCaptureCode(p.id)}`}
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          className={`${BTN_GHOST} text-error`}
+                          onClick={() => setRevoke(p)}
+                        >
+                          Revogar
+                        </button>
+                      </span>
                     ) : (
                       '—'
                     ),

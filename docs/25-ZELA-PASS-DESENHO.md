@@ -2,7 +2,7 @@
 
 Data: 08/10/2026. Origem: `24-PONTO-VIRTUAL-PESQUISA.md` e decisões do dono de 08/10/2026 (é **controle de acesso, não ponto**; identificar para **registrar**, não para abrir; nome "Zela Pass"; app web agora, aplicativo nativo depois; telas parecidas em função com as de referência, com a marca Zela).
 
-**Estado:** IMPLEMENTADO e TESTADO em ambiente local (ver §10). Facial **fora** (§9). Nada foi testado em tablet/celular físico, câmera real, TLS real nem Safari/Firefox (§10).
+**Estado:** IMPLEMENTADO e TESTADO em ambiente local (ver §10). Facial implementado, desligado por padrão (§9, D-028). Nada foi testado em tablet/celular físico, câmera real, TLS real nem Safari/Firefox (§10).
 
 ## 1. O que é
 
@@ -68,7 +68,7 @@ Mantém o **fluxo** das 6 telas de referência; marca, paleta (índigo/escuro do
 
 | Tela Zela Pass | Equivalente | Diferenças deliberadas |
 |---|---|---|
-| **Início:** logo, relógio (hora do Edge) e data, indicadores Edge/nuvem/rede, modo do ponto, botões "QR Code / Barras" e "Teclado", engrenagem, nome do aparelho | Boas-vindas com relógio | Sem botão de facial (módulo desligado). Leitor-teclado funciona nesta tela |
+| **Início:** logo, relógio (hora do Edge) e data, indicadores Edge/nuvem/rede, modo do ponto, botões "QR Code / Barras" e "Teclado", engrenagem, nome do aparelho | Boas-vindas com relógio | Botão **Facial** só com o módulo e a política ativos (§9). Leitor-teclado funciona nesta tela |
 | **Ativar este leitor** (1ª vez): código (digitado ou lido por QR), nome do aparelho, **PIN do operador** | (configuração inicial) | |
 | **Teclado:** nº identificador + senha + teclado numérico, volta sozinho em 30 s | Teclado | Senha mascarada |
 | **Leitura de código:** câmera + digitar o código | QR Code | Avisa se a câmera só lê QR |
@@ -77,7 +77,7 @@ Mantém o **fluxo** das 6 telas de referência; marca, paleta (índigo/escuro do
 | **Configurações do Sistema:** endereço do Edge, conexão (WebSocket/HTTPS/TCP desabilitado), câmera, log técnico (sem segredos), Salvar, **Testar conexão**, alterar PIN, desativar | Configurações do Sistema | Sem "banco/equipamento": o ponto vem da ativação |
 | **Informações do Sistema:** versão, leitor, modo, conexão, Edge/nuvem, última comunicação, desvio de relógio, SO/navegador, tempo de atividade | Informações do Sistema | Sem pessoas/fotos; sem pesquisa de bem-estar |
 | **Registros:** últimas 100 leituras **deste aparelho** (data/hora, forma, resultado, "Sinc.") | Registros | **Sem nome e sem identificador** (minimização, LGPD); "Sinc." = o Edge respondeu |
-| Cadastro de faces / Licença facial | idem | **Não existem** (§9) |
+| Cadastro de faces | idem | **Cadastro facial** (Configurações, atrás do PIN, por código de captura do painel; §9). **Licença facial não existe** |
 
 Sem resposta do Edge a tela diz "Sem conexão com o Edge" e **nada é registrado nem enfileirado no aparelho** (senha/credencial nunca ficam guardadas no tablet; quem decide é o Edge). A decisão de não ter fila offline no leitor é de segurança (a 1ª versão previa uma).
 
@@ -92,7 +92,7 @@ Sem resposta do Edge a tela diz "Sem conexão com o Edge" e **nada é registrado
 
 ## 9. Facial
 
-**Fora.** Só depois do benchmark (D-007) e do RIPD (D-019). Biometria desligada por padrão; via `BiometricProvider`; liveness só se comprovadamente suportado; alternativa sem biometria sempre. Por isso o PWA não tem botão "Facial", "Cadastro de faces" nem "Licença facial". Biometria no navegador do tablet (câmera, gabarito no cliente) tem risco próprio: decidir em fase própria.
+**Existe, desligado por padrão** (D-028; desenho, instalação e limites em `27-FACE-DESENHO-OPERACAO.md`, benchmark em `26-FACE-BENCHMARK.md`). O botão **Facial** só aparece quando o Edge informa `face:true` no `status` (provedor ligado com `EDGE_FACE=1` **e** política biométrica da organização completa e com RIPD vigente, D-019). O cadastro do rosto fica em Configurações > **Cadastro facial** (atrás do PIN do operador), por **código de captura** gerado no painel depois do consentimento. A captura roda no navegador do tablet (câmera, detecção, vetor); a imagem nunca sai do aparelho; o gabarito fica cifrado no Edge; quem decide é o motor determinístico do Edge. Não existem "Licença facial" nem câmera sempre ligada: a câmera só abre quando a pessoa toca em Facial ou o operador cadastra. Alternativa sem biometria sempre disponível (teclado, QR/barras).
 
 ## 10. Evidência de teste (executado em 08/10/2026, máquina de desenvolvimento)
 

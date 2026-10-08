@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createControlIdDriver, createMockHardware } from '@zela/device-drivers';
 import { loadConfig } from './config.js';
 import { recordDeviceDecisions } from './device-events.js';
+import { createEdgeFaceProvider } from './face-provider.js';
 import { createMonitorServer } from './monitor-server.js';
 import { startTerminalSetup } from './monitor-setup.js';
 import { runLoop } from './runner.js';
@@ -21,6 +22,8 @@ const transport = createHttpTransport({
   secret: cfg.agentSecret,
   deviceKey: cfg.deviceKey ?? undefined,
 });
+// A fila de eliminação (LGPD) roda sempre, com ou sem facial ligado; a identificação por rosto só com EDGE_FACE=1.
+const faceProvider = createEdgeFaceProvider({ store });
 const driver =
   cfg.driver === 'mock'
     ? createMockHardware({ points: cfg.mockPoints })
@@ -82,6 +85,7 @@ if (cfg.reader) {
   const service = createReaderService({
     store,
     driver,
+    biometricProvider: cfg.face ? faceProvider : null,
     isOffline: () => lastCloudOkMs === null || Date.now() - lastCloudOkMs > OFFLINE_AFTER_MS,
   });
   const onError = () => console.error('leitor: erro ao tratar mensagem');
@@ -138,6 +142,7 @@ const outcome = await runLoop({
   transport,
   version: cfg.version,
   commands,
+  biometricProvider: faceProvider,
   // Usuários do terminal Standalone espelham a política do Zela (só pontos em modo direto; o Push não suporta).
   roster:
     driver && cfg.driver === 'controlid'

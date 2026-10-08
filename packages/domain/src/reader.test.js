@@ -9,6 +9,8 @@ import {
   readerOutcome,
   readerSigningString,
   validateReaderName,
+  faceCaptureCode,
+  parseFaceEnrollBody,
 } from './reader.js';
 
 const UUID = '3f2b8a0e-5c1d-4e7a-9b6f-1a2b3c4d5e6f';
@@ -88,6 +90,34 @@ describe('enroll', () => {
 
 describe('attempt', () => {
   const ev = 'evt-0123456789';
+  it('PIN de confirmação (2º fator) leva só o desafio e a senha', () => {
+    const challengeId = 'ab'.repeat(16);
+    const r = parseAttemptBody(
+      JSON.stringify({ method: 'pin', challengeId, pin: '482915', deviceEventId: ev }),
+    );
+    expect(r).toEqual({
+      ok: true,
+      value: { method: 'pin', deviceEventId: ev, challengeId, pin: '482915' },
+    });
+  });
+  it('PIN de confirmação malformado é recusado', () => {
+    for (const challengeId of ['', 'xyz', 'AB'.repeat(16), 'ab'.repeat(15), 5, null])
+      expect(
+        parseAttemptBody(
+          JSON.stringify({ method: 'pin', challengeId, pin: '482915', deviceEventId: ev }),
+        ).ok,
+      ).toBe(false);
+    expect(
+      parseAttemptBody(
+        JSON.stringify({
+          method: 'pin',
+          challengeId: 'ab'.repeat(16),
+          pin: '12',
+          deviceEventId: ev,
+        }),
+      ).ok,
+    ).toBe(false);
+  });
   it('PIN com identificador', () => {
     const r = parseAttemptBody(
       JSON.stringify({ method: 'pin', identifier: 'M-309', pin: '482915', deviceEventId: ev }),
@@ -181,11 +211,49 @@ describe('evidência da marcação', () => {
     expect(() =>
       toAccessEventParams({
         ...base,
-        reader: { readerId: UUID, method: 'face', mode: 'register_only' },
+        reader: { readerId: UUID, method: 'iris', mode: 'register_only' },
       }),
     ).toThrow();
     expect(() =>
       toAccessEventParams({ ...base, reader: { readerId: UUID, method: 'pin', mode: 'x' } }),
     ).toThrow();
+  });
+});
+
+describe('facial no protocolo do leitor', () => {
+  const D = 'A'.repeat(683) + '=';
+  it('aceita tentativa facial com vetor e prova de vida', () => {
+    const r = parseAttemptBody({
+      method: 'face',
+      deviceEventId: 'evt-0123456789',
+      d: D,
+      lv: 'PASSED',
+    });
+    expect(r).toEqual({
+      ok: true,
+      value: { method: 'face', deviceEventId: 'evt-0123456789', descriptor: D, liveness: 'PASSED' },
+    });
+  });
+  it.each([
+    { method: 'face', deviceEventId: 'evt-0123456789', d: D },
+    { method: 'face', deviceEventId: 'evt-0123456789', d: D, lv: 'MAYBE' },
+    { method: 'face', deviceEventId: 'evt-0123456789', d: D.slice(1), lv: 'PASSED' },
+    { method: 'face', deviceEventId: 'evt-0123456789', d: '!'.repeat(684), lv: 'PASSED' },
+    { method: 'face', deviceEventId: 'evt-0123456789', value: 'abcdef', lv: 'PASSED' },
+  ])('recusa facial malformada %j', (b) => {
+    expect(parseAttemptBody(b).ok).toBe(false);
+  });
+  it('face_enroll: código de captura de 8 hex + vetor', () => {
+    expect(parseFaceEnrollBody({ code: '0a1b2c3d', d: D, lv: 'PASSED' }).ok).toBe(true);
+    expect(parseFaceEnrollBody({ code: '0A1B2C3D', d: D, lv: 'PASSED' }).ok).toBe(false);
+    expect(parseFaceEnrollBody({ code: '0a1b2c', d: D, lv: 'PASSED' }).ok).toBe(false);
+    expect(parseFaceEnrollBody({ code: '0a1b2c3d', d: D }).ok).toBe(false);
+    expect(parseFaceEnrollBody('nao-json').ok).toBe(false);
+  });
+  it('código de captura sai do id do perfil (uuid), nunca da referência do gabarito', () => {
+    expect(faceCaptureCode('0a1b2c3d-1111-4222-8333-444455556666')).toBe('0a1b2c3d');
+    expect(faceCaptureCode('face:0a1b2c3d-1111-4222-8333-444455556666')).toBeNull();
+    expect(faceCaptureCode('xyz')).toBeNull();
+    expect(faceCaptureCode(undefined)).toBeNull();
   });
 });

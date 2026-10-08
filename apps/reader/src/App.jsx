@@ -19,6 +19,7 @@ import {
 import { TransportError, createTransport } from './lib/transport.js';
 import { Activate } from './screens/Activate.jsx';
 import { Home } from './screens/Home.jsx';
+import { FaceEnroll, FaceScan } from './screens/Face.jsx';
 import { Info } from './screens/Info.jsx';
 import { Keypad } from './screens/Keypad.jsx';
 import { Records } from './screens/Records.jsx';
@@ -56,6 +57,7 @@ export function App() {
   const [log, setLog] = useState([]);
   const [screen, setScreen] = useState('home');
   const [result, setResult] = useState(null);
+  const [challengeId, setChallengeId] = useState(null); // 2º fator: desafio aberto pelo facial (só em memória)
   const [busy, setBusy] = useState(false);
   const [flash, setFlash] = useState('');
   const [link, setLink] = useState({
@@ -119,6 +121,7 @@ export function App() {
     setLink({
       edge: res?.ok ? 'ok' : res?.code === 'REVOKED' ? 'revoked' : res ? 'error' : 'down',
       mode: res?.mode,
+      face: res?.face === true,
       cloudOffline: res?.offline === true,
       network: navigator.onLine,
       clockDrift: Math.abs(client.clockOffsetMs()) > 60_000,
@@ -171,6 +174,14 @@ export function App() {
         res = { ok: false, code: 'UNAVAILABLE', outcome: 'UNAVAILABLE' };
       }
       const outcome = res.ok ? res.outcome : (res.outcome ?? 'UNAVAILABLE');
+      setChallengeId(null);
+      if (res.ok && res.challengeId) {
+        // Ponto com 2º fator: o facial foi reconhecido; falta a senha da mesma pessoa. Sem tela de resultado ainda.
+        setChallengeId(res.challengeId);
+        setBusy(false);
+        setScreen('confirm');
+        return;
+      }
       const delivered = res.code !== 'UNAVAILABLE';
       setResult({
         outcome: res.ok ? outcome : 'NOT_AUTHORIZED',
@@ -297,10 +308,25 @@ export function App() {
           identity={identity}
           onQr={() => setScreen('scanner')}
           onKeypad={() => setScreen('keypad')}
+          onFace={() => setScreen('face')}
           onSettings={() => setScreen('gate')}
         />
       )}
       {screen === 'keypad' && <Keypad busy={busy} onSubmit={read} onCancel={back} />}
+      {screen === 'confirm' && challengeId && (
+        <Keypad busy={busy} challengeId={challengeId} onSubmit={read} onCancel={back} />
+      )}
+      {screen === 'face' && <FaceScan onRead={read} onCancel={back} />}
+      {screen === 'faceEnroll' && (
+        <FaceEnroll
+          onBack={() => setScreen('menu')}
+          onSubmit={async (p) => {
+            const res = await client.faceEnroll(p);
+            void note('face_enroll', res?.code ?? 'sem resposta');
+            return res;
+          }}
+        />
+      )}
       {screen === 'scanner' && (
         <Scanner facingMode={settings.facingMode} onCode={onScanned} onCancel={back} />
       )}
@@ -314,7 +340,9 @@ export function App() {
           }}
         />
       )}
-      {screen === 'menu' && <Menu identity={identity} onGo={setScreen} onExit={back} />}
+      {screen === 'menu' && (
+        <Menu identity={identity} face={link.face === true} onGo={setScreen} onExit={back} />
+      )}
       {screen === 'config' && (
         <Config
           identity={identity}

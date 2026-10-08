@@ -39,6 +39,9 @@ create table if not exists readers (
 create table if not exists reader_nonces (
   nonce text primary key, expires_at text not null
 );
+create table if not exists face_templates (
+  ref text primary key, descriptor text not null, created_at text not null
+);
 create table if not exists reader_attempts (
   reader_id text not null, device_event_id text not null, outcome text not null, created_at text not null,
   primary key (reader_id, device_event_id)
@@ -235,6 +238,28 @@ export function openStore(path = ':memory:', { key } = {}) {
         readerId,
         deviceEventId,
       )?.outcome ?? null,
+    // ---- gabaritos faciais (dado biométrico sensível: cifrados em repouso com EDGE_STORE_KEY; nunca em log)
+    /** Só grava se a referência ainda não tem gabarito (nunca sobrescreve). @returns {boolean} */
+    putFaceTemplate: (ref, descriptorB64, nowIso) =>
+      Number(
+        q(
+          'insert or ignore into face_templates (ref, descriptor, created_at) values (?, ?, ?)',
+        ).run(ref, sealer.seal('face_templates.descriptor', descriptorB64), nowIso).changes,
+      ) === 1,
+    getFaceTemplate: (ref) => {
+      const row = q('select descriptor from face_templates where ref = ?').get(ref);
+      return row ? sealer.open('face_templates.descriptor', row.descriptor) : null;
+    },
+    hasFaceTemplate: (ref) => !!q('select 1 as x from face_templates where ref = ?').get(ref),
+    /** @returns {boolean} true se existia (apagar de novo é inócuo) */
+    deleteFaceTemplate: (ref) =>
+      Number(q('delete from face_templates where ref = ?').run(ref).changes) > 0,
+    faceTemplateCount: () => Number(q('select count(*) as n from face_templates').get().n),
+    /** Só as referências (não revela vetor): a identificação 1:N lê cada gabarito por `getFaceTemplate`. */
+    faceTemplateRefs: () =>
+      q('select ref from face_templates order by ref')
+        .all()
+        .map((r) => r.ref),
     saveReaderAttempt: (readerId, deviceEventId, outcome, nowIso) =>
       void q(
         'insert or ignore into reader_attempts (reader_id, device_event_id, outcome, created_at) values (?, ?, ?, ?)',

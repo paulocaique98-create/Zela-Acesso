@@ -1,7 +1,8 @@
 // Contrato BiometricProvider (Fase 7A). Biometria é dado sensível (LGPD) e fica desligada por padrão.
 // O núcleo só conhece esta interface; o motor concreto (local/navegador, dispositivo) fica atrás dela.
 // Nenhum motor é decidido aqui (D-007: benchmark antes de fixar). Nunca `face-api.js`.
-// Este pacote nunca recebe, guarda nem registra imagem ou gabarito bruto: só uma referência opaca.
+// O contrato e a decisão (`evaluateBiometric`) nunca recebem, guardam nem registram imagem ou gabarito: só uma
+// referência opaca e o resultado. A amostra do momento (`sample`) passa só em memória até o provedor.
 
 /** Códigos estáveis de motivo da verificação biométrica. Só acrescentar, nunca renomear. */
 export const BIOMETRIC_REASON_CODES = [
@@ -25,8 +26,9 @@ export const MIN_SAFE_THRESHOLD = 0.8;
  * @typedef {{ liveness: boolean, engine: string, engineVersion: string }} BiometricCapabilities
  * @typedef {{ status: BiometricStatus, score: number, liveness: LivenessResult,
  *            error?: 'UNAVAILABLE' | 'TIMEOUT' }} BiometricResult
- * @typedef {{ subjectRef: string, deviceId?: string }} BiometricProbe
+ * @typedef {{ subjectRef: string, deviceId?: string, sample?: unknown }} BiometricProbe
  *   `subjectRef` é referência opaca à pessoa/gabarito; nunca a imagem nem o vetor.
+ *   `sample` é a amostra do momento (ex.: vetor facial + prova de vida) e só vive em memória durante a verificação.
  *
  * Contrato de um provedor biométrico.
  * @typedef {object} BiometricProvider

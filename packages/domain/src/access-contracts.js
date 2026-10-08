@@ -38,7 +38,8 @@ export const ACCESS_REASON_CODES = [
  *   timezone: string,                               // fuso IANA do SÍTIO do ponto
  *   accessPoint: { id: string, zoneId: string, status: 'active' | 'inactive',
  *                  emergencyBehavior: 'fail_safe' | 'fail_secure',
- *                  offlineBehavior: 'degraded_deny' | 'degraded_allow' },
+ *                  offlineBehavior: 'degraded_deny' | 'degraded_allow',
+ *                  secondFactor?: 'none' | 'pin' },   // 'pin': credencial biométrica exige 2º fator (CHALLENGE)
  *   credential: { id: string, personId: string, status: 'active' | 'suspended' | 'revoked',
  *                 expiresAt?: Date | string | null, kind?: string } | null,   // kind 'biometric' exige `biometric`
  *   person: { id: string, status: 'active' | 'inactive' | 'blocked' } | null,
@@ -52,6 +53,7 @@ export const ACCESS_REASON_CODES = [
  *   visit?: { state: 'active' | 'expired' | 'revoked', allowedZoneIds: readonly string[],
  *             validFrom?: Date | string | null, validUntil?: Date | string | null } | null,
  *   challengeSatisfied?: boolean,
+ *   challengeFailed?: boolean,                       // 2º fator apresentado e recusado: nega (CREDENTIAL_INVALID)
  *   biometric?: { accepted: boolean, reasonCode: string } | null,  // resultado de evaluateBiometric (@zela/biometrics), calculado pelo chamador
  * }} AccessContext
  */

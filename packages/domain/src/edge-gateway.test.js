@@ -171,6 +171,37 @@ describe('edge-gateway', () => {
     });
   });
 
+  describe('face_captured', () => {
+    const PROFILE = 'b0000000-0000-0000-0000-000000000009';
+    it('repassa o perfil à RPC e devolve recorded', async () => {
+      const rpc = rpcOk(true);
+      const res = await handle(req({ op: 'face_captured', profileId: PROFILE }), { rpc });
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({ recorded: true });
+      expect(rpc).toHaveBeenCalledWith('edge_report_face_captured', {
+        p_agent: AGENT,
+        p_secret: SECRET,
+        p_profile: PROFILE,
+      });
+    });
+    it('RPC false = recorded:false; profileId inválido = 400 sem banco; erro = 502', async () => {
+      expect(
+        await (
+          await handle(req({ op: 'face_captured', profileId: PROFILE }), { rpc: rpcOk(false) })
+        ).json(),
+      ).toEqual({ recorded: false });
+      const rpc = rpcOk(true);
+      expect(
+        (await handle(req({ op: 'face_captured', profileId: "x'; drop" }), { rpc })).status,
+      ).toBe(400);
+      expect(rpc).not.toHaveBeenCalled();
+      const bad = vi.fn(async () => ({ data: null, error: { message: 'x' } }));
+      expect(
+        (await handle(req({ op: 'face_captured', profileId: PROFILE }), { rpc: bad })).status,
+      ).toBe(502);
+    });
+  });
+
   describe('comandos de dispositivo (4E)', () => {
     const MASTER = 'ab'.repeat(32);
     const CMD = 'c0000000-0000-0000-0000-000000000001';
