@@ -67,12 +67,12 @@ select public.record_access_event('10000000-0000-0000-0000-00000000000a', '20000
 select public.scan_offline_agents(180);
 reset role;
 
-select is((select count(*)::int from public.alerts where kind = 'door_forced'), 1, 'porta forcada: 1 alerta (deduplicado)');
-select is((select occurrences from public.alerts where kind = 'door_forced'), 2, 'recorrencia incrementa occurrences');
-select is((select severity from public.alerts where kind = 'door_forced'), 'critical', 'porta forcada = critical');
-select is((select count(*)::int from public.alerts where kind = 'door_held_open'), 1, 'porta aberta: 1 alerta');
-select is((select count(*)::int from public.alerts), 3, 'DOOR_OPENED normal nao gera alerta');
-select is((select count(*)::int from public.alerts where kind = 'device_offline'), 1, 'agente offline: 1 alerta');
+select is((select count(*)::int from public.alerts where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b') and kind = 'door_forced'), 1, 'porta forcada: 1 alerta (deduplicado)');
+select is((select occurrences from public.alerts where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b') and kind = 'door_forced'), 2, 'recorrencia incrementa occurrences');
+select is((select severity from public.alerts where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b') and kind = 'door_forced'), 'critical', 'porta forcada = critical');
+select is((select count(*)::int from public.alerts where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b') and kind = 'door_held_open'), 1, 'porta aberta: 1 alerta');
+select is((select count(*)::int from public.alerts where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b')), 3, 'DOOR_OPENED normal nao gera alerta');
+select is((select count(*)::int from public.alerts where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b') and kind = 'device_offline'), 1, 'agente offline: 1 alerta');
 
 -- ------------------------------------------------------------ varredura exige service_role e limiar valido
 select tests.login('00000000-0000-0000-0000-0000000000a1');
@@ -84,11 +84,11 @@ reset role;
 
 -- ------------------------------------------------------------ RLS: leitura por permissao e tenant
 select tests.login('00000000-0000-0000-0000-0000000000a1');
-select is((select count(*)::int from public.alerts), 3, 'owner A ve os alertas de A');
+select is((select count(*)::int from public.alerts where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b')), 3, 'owner A ve os alertas de A');
 reset role;
 select tests.login('00000000-0000-0000-0000-0000000000a2');
-select is((select count(*)::int from public.alerts), 3, 'recepcionista le alertas');
-select throws_ok($$select public.acknowledge_alert((select id from public.alerts where kind = 'door_forced'))$$,
+select is((select count(*)::int from public.alerts where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b')), 3, 'recepcionista le alertas');
+select throws_ok($$select public.acknowledge_alert((select id from public.alerts where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b') and kind = 'door_forced'))$$,
   'P0002', null, 'recepcionista nao reconhece (alert:manage)');
 reset role;
 select tests.login('00000000-0000-0000-0000-0000000000a3');
@@ -96,24 +96,24 @@ select is((select count(*)::int from public.alerts), 0, 'viewer nao le alertas')
 reset role;
 select tests.login('00000000-0000-0000-0000-0000000000b1');
 select is((select count(*)::int from public.alerts), 0, 'tenant B nao ve alertas de A');
-select throws_ok($$select public.resolve_alert((select id from public.alerts where kind = 'door_forced'))$$,
+select throws_ok($$select public.resolve_alert((select id from public.alerts where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b') and kind = 'door_forced'))$$,
   'P0002', null, 'tenant B nao resolve alerta de A');
 reset role;
 
 -- ------------------------------------------------------------ reconhecer, resolver, incidente
 select tests.login('00000000-0000-0000-0000-0000000000a1');
-select public.acknowledge_alert((select id from public.alerts where kind = 'door_forced'));
-select is((select status from public.alerts where kind = 'door_forced'), 'acknowledged', 'alerta reconhecido');
-select throws_ok($$select public.acknowledge_alert((select id from public.alerts where kind = 'door_forced'))$$,
+select public.acknowledge_alert((select id from public.alerts where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b') and kind = 'door_forced'));
+select is((select status from public.alerts where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b') and kind = 'door_forced'), 'acknowledged', 'alerta reconhecido');
+select throws_ok($$select public.acknowledge_alert((select id from public.alerts where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b') and kind = 'door_forced'))$$,
   '22023', null, 'nao reconhece duas vezes');
 insert into tests.vars select 'inc', public.create_incident('20000000-0000-0000-0000-00000000000a', 'Arrombamento na Porta A',
-  'Porta forcada fora do horario', 'critical', array[(select id from public.alerts where kind = 'door_forced')])::text;
+  'Porta forcada fora do horario', 'critical', array[(select id from public.alerts where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b') and kind = 'door_forced')])::text;
 select is((select count(*)::int from public.alerts where incident_id = (select v::uuid from tests.vars where k = 'inc')), 1,
   'alerta vinculado ao incidente');
 select throws_ok($$select public.create_incident('20000000-0000-0000-0000-00000000000a', 'Titulo', null, 'urgente')$$,
   '22023', null, 'severidade invalida recusada');
-select public.resolve_alert((select id from public.alerts where kind = 'door_forced'), 'Porta reparada');
-select is((select status from public.alerts where kind = 'door_forced'), 'resolved', 'alerta resolvido');
+select public.resolve_alert((select id from public.alerts where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b') and kind = 'door_forced'), 'Porta reparada');
+select is((select status from public.alerts where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b') and kind = 'door_forced'), 'resolved', 'alerta resolvido');
 select public.update_incident_status((select v::uuid from tests.vars where k = 'inc'), 'closed', 'Encerrado');
 select is((select status from public.incidents), 'closed', 'incidente encerrado');
 select throws_ok($$select public.update_incident_status((select v::uuid from tests.vars where k = 'inc'), 'investigating')$$,
@@ -129,14 +129,14 @@ select public.record_access_event('10000000-0000-0000-0000-00000000000a', '20000
   'physical_outcome', now(), null, null, null, null, '50000000-0000-0000-0000-00000000000a', '30000000-0000-0000-0000-00000000000a',
   null, 'DOOR_FORCED', 'EDGE_AGENT', null, '{}'::jsonb, 'forced-evt-0003');
 reset role;
-select is((select count(*)::int from public.alerts where kind = 'door_forced' and status = 'open'), 1, 'nova ocorrencia reabre alerta novo');
+select is((select count(*)::int from public.alerts where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b') and kind = 'door_forced' and status = 'open'), 1, 'nova ocorrencia reabre alerta novo');
 
 -- ------------------------------------------------------------ agente volta: alerta offline se resolve sozinho
 update public.edge_agents set last_seen_at = now() where id = (select v::uuid from tests.vars where k = 'agent');
 set local role service_role;
 select public.scan_offline_agents(180);
 reset role;
-select is((select status from public.alerts where kind = 'device_offline'), 'resolved', 'offline resolve sozinho ao voltar');
+select is((select status from public.alerts where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b') and kind = 'device_offline'), 'resolved', 'offline resolve sozinho ao voltar');
 
 -- ------------------------------------------------------------ ocupacao
 insert into public.presence_states (tenant_id, site_id, zone_id, person_id, state, since) values

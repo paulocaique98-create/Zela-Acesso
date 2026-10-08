@@ -32,7 +32,7 @@ Atualizado: 2026-10-08
 - **Menu:** grupos "Cadastro" (criar: local, prédio/andar, zona, ponto, leitor, pessoa, grupo, biometria) e "Gerenciar" (listar/editar/excluir, sem criar). Mesmas telas em dois modos (`PageMode` em `RegistryPages.jsx`; rotas `/cadastro/*` e `/gerenciar/*`); as rotas antigas (`/pessoas` etc.) seguem valendo com tudo junto. Andares continuam dentro de "Prédios". Regras de acesso, Portaria e Administração inalterados.
 - **Locais:** criar/editar na UI (antes só leitura). **Endereço do Zela Pass** por Local (`sites.zela_pass_url`, migration `20261110120000`, https obrigatório, pgTAP `34_` PASS). Leitores: "Copiar link" (endereço do Edge) e "Copiar link de ativação" (leva o código em `#codigo=`, preenchido pelo leitor e apagado da barra).
 - **Testes executados:** lint, Prettier, Vitest web 26 / leitor 17, builds; Playwright `menu-modes` 2/2, `physical`, `readers`, `registry`, `operations`, `policies`, `device-command`, `tenant-isolation` PASS. `biometrics.spec` falha no banco local atual (política da Alfa ligada pelo `db:seed:face` anterior; o teste espera "desligada"), não relacionado à mudança.
-- **PENDENTE:** `supabase db push` da migration `20261110120000` em produção ANTES de publicar o app (senão Locais e Leitores consultam coluna inexistente); revisar telas no navegador; `goMenu` dos E2E usa as rotas completas para os itens de cadastro.
+- **Produção (08/10/2026):** migration `20261110120000` aplicada (`db push`, conferida em `migration list`) e app publicado (`d79b118`). **PENDENTE:** revisar telas no navegador; `biometrics.spec` depende do banco local sem a política da Alfa ligada; `goMenu` dos E2E usa as rotas completas para os itens de cadastro.
 
 ## Facial no Zela Pass (08/10/2026) — IMPLEMENTADO e TESTADO local; D-028
 
@@ -45,7 +45,7 @@ Atualizado: 2026-10-08
 
 - **O que existe:** `access_points.second_factor` (`none`|`pin`, migration `20261109120000`, auditada, no snapshot); motor: facial aceito em ponto com `pin` vira `CHALLENGE` e só `ALLOW` com confirmação (`challengeSatisfied`) ou `DENY` (`challengeFailed`); Edge: desafio de uso único em memória (60 s, preso a leitor+ponto), PIN da pessoa do desafio com o bloqueio do PIN comum; leitor: tela "Confirme com sua senha"; painel: campo no formulário do ponto. Desenho em `27-` §"Segundo fator por ponto".
 - **Testes executados:** Vitest domínio 315, edge 272, leitor 17, web 26, biometria 32, drivers 44 (todos PASS); pgTAP `33_point_second_factor` e `32` PASS; lint limpo nos arquivos tocados.
-- **Não verde, sem relação com a mudança:** `pnpm db:test` com 3 arquivos falhando (05, 12, 17) por dados de desenvolvimento sobrando no banco local (testes assumem contagem global); **não confirmado com `db:reset`**. Prettier acusa `runner.js` e `transport.js` (alterações anteriores da árvore, não tocadas aqui).
+- **Resolvido em 08/10/2026:** os 3 arquivos pgTAP (05, 12, 17) falhavam porque contavam o banco inteiro (o seed tinha outras linhas); agora filtram pelos tenants sintéticos do teste. `supabase test db`: 34 arquivos, 1127 testes, PASS. Causa confirmada sem `db:reset`. Prettier acusa `runner.js` e `transport.js` (alterações anteriores da árvore, não tocadas aqui).
 - **NÃO testado / PENDENTE:** E2E de navegador do fluxo facial + PIN, tablet/câmera reais, 2º fator por cartão, replicação do gabarito entre Edges (desenho no `27-` antes do código).
 
 ## Fase 2 — em andamento (iniciada em 2026-10-06)

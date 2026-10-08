@@ -90,7 +90,7 @@ select is((select status::text from public.edge_agents where name = 'Garagem'), 
 select is((select enrollment_token_hash from public.edge_agents where name = 'Garagem'), null, 'token apagado apos uso');
 select isnt((select secret_hash from public.edge_agents where name = 'Garagem'), (select v from tests.vars where k = 'secret2'),
   'segredo nao e guardado em texto puro');
-select is((select count(*)::int from public.audit_log where action = 'edge_agent.enroll' and actor_type = 'device'), 1,
+select is((select count(*)::int from public.audit_log where tenant_id in ('10000000-0000-0000-0000-00000000000a', '10000000-0000-0000-0000-00000000000b') and action = 'edge_agent.enroll' and actor_type = 'device'), 1,
   'enrollment auditado como device');
 select is((select count(*)::int from public.audit_log where metadata::text like '%' || (select v from tests.vars where k='secret2') || '%'
   or metadata::text like '%zea\_%'), 0, 'audit_log sem token/segredo');

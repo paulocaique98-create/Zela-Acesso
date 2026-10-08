@@ -124,12 +124,12 @@ reset role;
 
 -- segredo nunca em claro (como postgres)
 select is((select count(*)::int from public.credentials where secret_hash = '482915'), 0, 'PIN nao esta em texto puro');
-select ok((select secret_hash from public.credentials where type = 'pin') like '$2%', 'PIN guardado como bcrypt');
+select ok((select secret_hash from public.credentials where tenant_id = '10000000-0000-0000-0000-00000000000a' and type = 'pin') like '$2%', 'PIN guardado como bcrypt');
 select ok(
-  (select secret_hash = extensions.crypt('482915', secret_hash) from public.credentials where type = 'pin'),
+  (select secret_hash = extensions.crypt('482915', secret_hash) from public.credentials where tenant_id = '10000000-0000-0000-0000-00000000000a' and type = 'pin'),
   'PIN correto confere com o hash');
 select ok(
-  (select not (secret_hash = extensions.crypt('482916', secret_hash)) from public.credentials where type = 'pin'),
+  (select not (secret_hash = extensions.crypt('482916', secret_hash)) from public.credentials where tenant_id = '10000000-0000-0000-0000-00000000000a' and type = 'pin'),
   'PIN errado nao confere');
 select isnt((select identifier_hash from public.credentials where type = 'card'), '04A1B2C3', 'cartao nao esta em claro');
 select is((select char_length(identifier_hash) from public.credentials where type = 'card'), 64, 'cartao guardado como sha256');
@@ -153,12 +153,12 @@ select is(
 
 -- ---------------------------------------------------------------- revogacao terminal
 select tests.login('00000000-0000-0000-0000-0000000000a1');
-select lives_ok($$update public.credentials set status = 'suspended' where type = 'pin'$$, 'suspende PIN');
-select lives_ok($$update public.credentials set status = 'active' where type = 'pin'$$, 'reativa PIN suspenso');
-select lives_ok($$update public.credentials set status = 'revoked' where type = 'pin'$$, 'revoga PIN');
-select isnt((select revoked_at from public.credentials where type = 'pin'), null, 'revoked_at carimbado');
-select throws_ok($$update public.credentials set status = 'active' where type = 'pin'$$, 'P0001', null, 'revogada nao reativa');
-select throws_ok($$update public.credentials set label = 'x' where type = 'pin'$$, 'P0001', null, 'revogada nao se edita');
+select lives_ok($$update public.credentials set status = 'suspended' where tenant_id = '10000000-0000-0000-0000-00000000000a' and type = 'pin'$$, 'suspende PIN');
+select lives_ok($$update public.credentials set status = 'active' where tenant_id = '10000000-0000-0000-0000-00000000000a' and type = 'pin'$$, 'reativa PIN suspenso');
+select lives_ok($$update public.credentials set status = 'revoked' where tenant_id = '10000000-0000-0000-0000-00000000000a' and type = 'pin'$$, 'revoga PIN');
+select isnt((select revoked_at from public.credentials where tenant_id = '10000000-0000-0000-0000-00000000000a' and type = 'pin'), null, 'revoked_at carimbado');
+select throws_ok($$update public.credentials set status = 'active' where tenant_id = '10000000-0000-0000-0000-00000000000a' and type = 'pin'$$, 'P0001', null, 'revogada nao reativa');
+select throws_ok($$update public.credentials set label = 'x' where tenant_id = '10000000-0000-0000-0000-00000000000a' and type = 'pin'$$, 'P0001', null, 'revogada nao se edita');
 select lives_ok(
   $$select public.issue_credential('10000000-0000-0000-0000-00000000000a',
     '40000000-0000-0000-0000-0000000000a1', 'pin', '735190')$$, 'PIN revogado libera novo PIN');
