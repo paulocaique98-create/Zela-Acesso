@@ -109,6 +109,42 @@ export function toPhysicalOutcomeParams(input) {
   };
 }
 
+/**
+ * Alarme de porta detectado pelo Edge/terminal (sensor): `physical_outcome` DOOR_FORCED ou DOOR_HELD_OPEN, que na nuvem abre o
+ * alerta (`door_forced` crítico / `door_held_open`). Não há decisão de acesso por trás, então a correlação é nova (a RPC exige uma).
+ * @param {{ tenantId: string, siteId: string, occurredAt: Date | string, kind: 'DOOR_FORCED' | 'DOOR_HELD_OPEN',
+ *   accessPointId: string, correlationId: string, idempotencyKey: string, source?: 'EDGE_AGENT' | 'DEVICE' }} input
+ */
+export function toDoorAlarmParams(input) {
+  const { tenantId, siteId, occurredAt, kind } = input;
+  if (!tenantId || !siteId) throw new Error('tenantId e siteId são obrigatórios');
+  if (kind !== 'DOOR_FORCED' && kind !== 'DOOR_HELD_OPEN')
+    throw new Error(`kind inválido: ${kind}`);
+  if (!input.accessPointId) throw new Error('accessPointId é obrigatório (o alerta é por ponto)');
+  if (!input.correlationId || !input.idempotencyKey)
+    throw new Error('correlationId e idempotencyKey são obrigatórios');
+  const at = occurredAt instanceof Date ? occurredAt : new Date(occurredAt);
+  if (Number.isNaN(at.getTime())) throw new Error('occurredAt inválido');
+  return {
+    p_tenant: tenantId,
+    p_site: siteId,
+    p_event_type: 'physical_outcome',
+    p_occurred_at: at.toISOString(),
+    p_decision: null,
+    p_reason_code: null,
+    p_person: null,
+    p_credential: null,
+    p_access_point: input.accessPointId,
+    p_zone: null,
+    p_policy: null,
+    p_physical_outcome: kind,
+    p_source: input.source ?? 'EDGE_AGENT',
+    p_correlation: input.correlationId,
+    p_evidence: { doorAlarm: { kind } },
+    p_idempotency_key: input.idempotencyKey,
+  };
+}
+
 const DEVICE_EVENT_RE = /^[A-Za-z0-9_.:-]{1,64}$/;
 
 /**

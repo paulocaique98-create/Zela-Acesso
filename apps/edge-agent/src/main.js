@@ -74,11 +74,27 @@ if (monitorServer) {
   });
 }
 
+// door.forced/door.held_open dependem do relógio do driver; sem este tick nunca disparam.
+if (driver && cfg.driver === 'controlid') {
+  const t = setInterval(() => driver.tick(new Date()), 1_000);
+  t.unref();
+}
+
 const outcome = await runLoop({
   store,
   transport,
   version: cfg.version,
   commands,
+  // Usuários do terminal Standalone espelham a política do Zela (só pontos em modo direto; o Push não suporta).
+  roster:
+    driver && cfg.driver === 'controlid'
+      ? {
+          driver,
+          pointIds: Object.keys(cfg.controlIdPoints).filter(
+            (id) => cfg.controlIdPoints[id].transport !== 'push',
+          ),
+        }
+      : null,
   tickMs: cfg.tickMs,
   signal: ac.signal,
   // sem segredo/payload: só o nome das etapas e o status

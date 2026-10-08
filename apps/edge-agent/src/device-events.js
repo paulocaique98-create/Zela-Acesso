@@ -3,7 +3,10 @@
 // O motor NÃO reavalia e nada aqui abre porta. Sem vínculo tenant/site conhecido (snapshot nunca recebido) não enfileira.
 
 import { randomUUID } from 'node:crypto';
-import { toDeviceLocalDecisionParams } from '@zela/domain';
+import { toDeviceLocalDecisionParams, toDoorAlarmParams } from '@zela/domain';
+import { personIdForDeviceUser } from './roster.js';
+
+const DOOR_ALARMS = { 'door.forced': 'DOOR_FORCED', 'door.held_open': 'DOOR_HELD_OPEN' };
 
 /**
  * @param {{ store: ReturnType<typeof import('./store.js').openStore>,
@@ -20,17 +23,35 @@ export function recordDeviceDecisions({
   onDropped = () => {},
 }) {
   return driver.onEvent((e) => {
-    if (e.type !== 'access.granted' && e.type !== 'access.denied') return;
+    const alarm = DOOR_ALARMS[e.type];
+    if (e.type !== 'access.granted' && e.type !== 'access.denied' && !alarm) return;
     const [tenantId, siteId] = (store.getMeta('binding') ?? '/').split('/');
     if (!tenantId || !siteId) return onDropped('NO_BINDING');
     try {
       const at = now();
+      if (alarm) {
+        // Arrombamento/porta mantida aberta vistos pelo sensor do terminal -> alerta na nuvem (physical_outcome).
+        const p = toDoorAlarmParams({
+          tenantId,
+          siteId,
+          occurredAt: at,
+          kind: alarm,
+          accessPointId: e.pointId,
+          correlationId: newId(),
+          idempotencyKey: `edge:door:${newId()}`,
+        });
+        store.enqueue(p.p_idempotency_key, p, at.toISOString());
+        return;
+      }
       const params = toDeviceLocalDecisionParams({
         tenantId,
         siteId,
         occurredAt: at,
         allowed: e.type === 'access.granted',
         accessPointId: e.pointId,
+        // id do usuário no terminal -> pessoa (mapa gravado pela sincronização); usuário cadastrado à mão fica sem pessoa
+        personId:
+          e.data?.deviceUserId != null ? personIdForDeviceUser(store, e.data.deviceUserId) : null,
         idempotencyKey: `edge:dev:${newId()}`,
         device: {
           kind: driver.kind,

@@ -15,6 +15,13 @@ const EVT_NOT_IDENTIFIED = 3;
 const EVT_TIMEOUT = 5;
 const EVT_DENIED = 6;
 const EVT_GRANTED = 7;
+const EVT_BUTTON = 11; // abertura pelo botão/saída do próprio terminal
+const EVT_WEB = 12; // abertura pela interface web do terminal
+// Sincronização de usuários (create_objects): só mexe no que o Zela criou (registration 'zela:<id>').
+export const ZELA_REGISTRATION_PREFIX = 'zela:';
+export const ZELA_RULE_ID = 900001; // regra única "permitir" do Zela no terminal
+const SYNC_CHUNK = 100;
+const DEFAULT_FORCED_GRACE_MS = 8_000;
 
 /**
  * @typedef {object} ControlIdPoint
@@ -27,6 +34,9 @@ const EVT_GRANTED = 7;
  * @property {number} [reason] model=sec_box (padrão 3)
  * @property {'clockwise'|'anticlockwise'|'both'} [allow] model=catra (padrão 'both')
  * @property {number|string} [deviceId] id do dispositivo, para associar notificações do Monitor e do Push
+ * @property {boolean} [doorSensor] a porta tem sensor ligado ao terminal: habilita a inferência de `door.forced`
+ *   (porta aberta sem autorização do terminal/comando na janela de tolerância). Sem sensor nunca há falso alarme nem detecção.
+ * @property {number} [portalId] id do portal no terminal para a regra do Zela (padrão: doorNumber ?? 1; HIPÓTESE)
  * @property {'direct'|'push'} [transport] 'direct' (padrão): o Edge chama o terminal. 'push': o terminal busca os comandos
  *   no Edge (modo Push); mais lento (até um período de consulta) e com autenticação mais fraca, ver handlePush.
  */
@@ -57,6 +67,10 @@ function validatePoint(id, p) {
     bad(`ponto ${id}: doorNumber deve ser 1..4`);
   if (p.model === 'catra' && p.allow != null && !CATRA_ALLOW.has(p.allow))
     bad(`ponto ${id}: allow inválido`);
+  if (p.doorSensor != null && typeof p.doorSensor !== 'boolean')
+    bad(`ponto ${id}: doorSensor deve ser booleano`);
+  if (p.portalId != null && !(Number.isInteger(p.portalId) && p.portalId >= 1))
+    bad(`ponto ${id}: portalId inválido`);
   if (p.transport != null && p.transport !== 'direct' && p.transport !== 'push')
     bad(`ponto ${id}: transport inválido`);
   if (p.transport === 'push' && p.deviceId == null)
@@ -87,6 +101,7 @@ export function createControlIdDriver({
   aliveIntervalMs = 30_000,
   monitorPathPrefix = '/api/notifications',
   pushWaitMs = 15_000,
+  forcedGraceMs = DEFAULT_FORCED_GRACE_MS,
 }) {
   const production = (env ?? process.env.NODE_ENV) === 'production';
   /** @type {Map<string, any>} */
@@ -107,6 +122,8 @@ export function createControlIdDriver({
       lastSeen: 0,
       aliveSeen: false,
       pending: null,
+      lastAuthAt: 0,
+      forcedCheck: null,
     });
   }
   const handlers = new Set();
@@ -194,9 +211,12 @@ export function createControlIdDriver({
       p.door = 'open';
       p.openedAt = t;
       p.heldFlagged = false;
+      // Porta aberta sem autorização: decide no `tick`, depois da tolerância (a notificação de acesso pode chegar depois da de porta).
+      if (p.cfg.doorSensor === true) p.forcedCheck = { openedAt: t, deadline: t + forcedGraceMs };
       emit('door.opened', pointId);
     } else if (!open && p.door !== 'closed') {
       p.door = 'closed';
+      p.forcedCheck = null;
       emit('door.closed', pointId);
     }
   }
@@ -240,6 +260,7 @@ export function createControlIdDriver({
           contentType: 'application/json',
         });
         if (!res.ok) return res;
+        p.lastAuthAt = now().getTime();
         p.locked = false;
         p.unlockedUntil = now().getTime() + durationMs;
         return { ok: true, code: 'OK' };
@@ -249,6 +270,7 @@ export function createControlIdDriver({
       if (r.status !== 200) return { ok: false, code: 'DEVICE_OFFLINE' };
       const st = r.json?.actions?.[0]?.status;
       if (st === 'denied') return { ok: false, code: 'INTERLOCK_DENIED' };
+      p.lastAuthAt = now().getTime();
       p.locked = false;
       p.unlockedUntil = now().getTime() + durationMs;
       return { ok: true, code: 'OK' };
@@ -282,6 +304,15 @@ export function createControlIdDriver({
           p.locked = true;
           p.unlockedUntil = 0;
         }
+        if (p.forcedCheck && t >= p.forcedCheck.deadline) {
+          const { openedAt } = p.forcedCheck;
+          p.forcedCheck = null;
+          // Autorizado = o terminal liberou (granted/botão/web) ou o Edge mandou abrir até `forcedGraceMs` antes da abertura.
+          if (p.lastAuthAt < openedAt - forcedGraceMs && p.door !== 'closed') {
+            p.door = 'forced';
+            emit('door.forced', id);
+          }
+        }
         if (p.door === 'open' && !p.heldFlagged && t - p.openedAt >= holdOpenMs) {
           p.door = 'held_open';
           p.heldFlagged = true;
@@ -305,6 +336,126 @@ export function createControlIdDriver({
       });
       if (r.err) return fail(pointId, p, r.err);
       return r.status === 200 ? { ok: true, code: 'OK' } : { ok: false, code: 'DEVICE_OFFLINE' };
+    },
+
+    /**
+     * Sincroniza no terminal os usuários que o Zela autoriza neste ponto (modo Standalone: o terminal decide com o que tem).
+     * Só cria e remove o que é do Zela (`registration` = 'zela:<id>'); usuário cadastrado à mão nunca é tocado e um id já
+     * ocupado por usuário alheio é recusado (conflito), nunca sobrescrito. Todos recebem a mesma regra "permitir" ligada ao portal.
+     * NÃO envia cartão, PIN nem biometria (a nuvem só guarda hash): o credencial é cadastrado no terminal para o id do usuário.
+     * Corpos de create/destroy/load_objects de users, access_rules, user_access_rules e portal_access_rules seguem os exemplos
+     * oficiais; o formato da resposta de load_objects para regras é HIPÓTESE (NÃO TESTADO em equipamento).
+     * Modo Push não é suportado (exigiria transações via /push).
+     * @param {string} pointId
+     * @param {Array<{ deviceUserId: number, name: string }>} desired lista COMPLETA desejada
+     * @returns {Promise<{ ok: boolean, code: string, created?: number, removed?: number, conflicts?: number[] }>}
+     */
+    async syncRoster(pointId, desired) {
+      const p = pts.get(pointId);
+      if (!p) return { ok: false, code: 'UNKNOWN_POINT' };
+      if (p.cfg.transport === 'push') return { ok: false, code: 'INVALID_ARGUMENT' };
+      if (
+        !Array.isArray(desired) ||
+        desired.some(
+          (u) =>
+            !Number.isSafeInteger(u?.deviceUserId) ||
+            u.deviceUserId < 1 ||
+            typeof u.name !== 'string' ||
+            !u.name,
+        )
+      )
+        return { ok: false, code: 'INVALID_ARGUMENT' };
+
+      const load = async (object) => {
+        const r = await call(pointId, p, 'load_objects', { object });
+        if (r.err) return { err: r.err };
+        if (r.status !== 200) return { err: 'OFFLINE' };
+        return { list: Array.isArray(r.json?.[object]) ? r.json[object] : [] };
+      };
+      const write = async (path, body) => {
+        const r = await call(pointId, p, path, body);
+        if (r.err) return { err: r.err };
+        return r.status === 200 ? {} : { err: 'OFFLINE' };
+      };
+      const chunks = (arr) => {
+        const out = [];
+        for (let i = 0; i < arr.length; i += SYNC_CHUNK) out.push(arr.slice(i, i + SYNC_CHUNK));
+        return out;
+      };
+
+      const users = await load('users');
+      if (users.err) return fail(pointId, p, users.err);
+      const rules = await load('access_rules');
+      if (rules.err) return fail(pointId, p, rules.err);
+      const links = await load('portal_access_rules');
+      if (links.err) return fail(pointId, p, links.err);
+
+      // regra única "permitir" + ligação ao portal (idempotente)
+      if (!rules.list.some((r) => Number(r?.id) === ZELA_RULE_ID)) {
+        const w = await write('create_objects', {
+          object: 'access_rules',
+          values: [{ id: ZELA_RULE_ID, name: 'Zela', type: 1, priority: 0 }],
+        });
+        if (w.err) return fail(pointId, p, w.err);
+      }
+      const portalId = p.cfg.portalId ?? p.cfg.doorNumber ?? 1;
+      if (
+        !links.list.some(
+          (l) => Number(l?.portal_id) === portalId && Number(l?.access_rule_id) === ZELA_RULE_ID,
+        )
+      ) {
+        const w = await write('create_objects', {
+          object: 'portal_access_rules',
+          values: [{ portal_id: portalId, access_rule_id: ZELA_RULE_ID }],
+        });
+        if (w.err) return fail(pointId, p, w.err);
+      }
+
+      const isZela = (u) => String(u?.registration ?? '').startsWith(ZELA_REGISTRATION_PREFIX);
+      const byId = new Map(users.list.map((u) => [Number(u?.id), u]));
+      const want = new Map(desired.map((u) => [u.deviceUserId, u]));
+      const conflicts = [];
+      const toCreate = [];
+      for (const [id, u] of want) {
+        const have = byId.get(id);
+        if (!have) toCreate.push(u);
+        else if (!isZela(have)) conflicts.push(id);
+      }
+      const toRemove = users.list
+        .filter((u) => isZela(u) && !want.has(Number(u.id)))
+        .map((u) => Number(u.id));
+
+      // Remove primeiro: revogar vale mais que conceder.
+      for (const ids of chunks(toRemove)) {
+        const w = await write('destroy_objects', {
+          object: 'users',
+          where: { users: { id: ids } },
+        });
+        if (w.err) return fail(pointId, p, w.err);
+      }
+      for (const group of chunks(toCreate)) {
+        let w = await write('create_objects', {
+          object: 'users',
+          values: group.map((u) => ({
+            id: u.deviceUserId,
+            name: u.name,
+            registration: `${ZELA_REGISTRATION_PREFIX}${u.deviceUserId}`,
+          })),
+        });
+        if (w.err) return fail(pointId, p, w.err);
+        w = await write('create_objects', {
+          object: 'user_access_rules',
+          values: group.map((u) => ({ user_id: u.deviceUserId, access_rule_id: ZELA_RULE_ID })),
+        });
+        if (w.err) return fail(pointId, p, w.err);
+      }
+      return {
+        ok: true,
+        code: 'OK',
+        created: toCreate.length,
+        removed: toRemove.length,
+        conflicts,
+      };
     },
 
     /** Configura o Monitor para o Edge. O caminho leva um segredo aleatório (o terminal não assina as notificações). */
@@ -467,6 +618,8 @@ export function createControlIdDriver({
           };
           const uid = Number(c.values.user_id);
           if (uid > 0) data.deviceUserId = uid;
+          if (ev === EVT_GRANTED || ev === EVT_BUTTON || ev === EVT_WEB)
+            p.lastAuthAt = now().getTime();
           if (ev === EVT_GRANTED) count('access.granted', pointId, data);
           else if (ev === EVT_DENIED || ev === EVT_NOT_IDENTIFIED || ev === EVT_TIMEOUT)
             count('access.denied', pointId, data);

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   toAccessEventParams,
   toDeviceLocalDecisionParams,
+  toDoorAlarmParams,
   toPhysicalOutcomeParams,
 } from './access-event.js';
 import { evaluateAccess } from './access-engine.js';
@@ -211,5 +212,43 @@ describe('toDeviceLocalDecisionParams', () => {
     expect(() => toDeviceLocalDecisionParams({ ...base, device: { kind: 'x y' } })).toThrow();
     expect(() => toDeviceLocalDecisionParams({ ...base, tenantId: '' })).toThrow();
     expect(() => toDeviceLocalDecisionParams({ ...base, occurredAt: 'x' })).toThrow();
+  });
+});
+
+describe('toDoorAlarmParams', () => {
+  const base = {
+    tenantId: 't1',
+    siteId: 's1',
+    occurredAt: '2026-10-08T10:00:00Z',
+    kind: 'DOOR_FORCED',
+    accessPointId: 'ap1',
+    correlationId: 'c0000000-0000-0000-0000-000000000001',
+    idempotencyKey: 'edge:door:0001',
+  };
+  it('gera physical_outcome com correlação própria e sem pessoa nem credencial', () => {
+    expect(toDoorAlarmParams(base)).toMatchObject({
+      p_event_type: 'physical_outcome',
+      p_physical_outcome: 'DOOR_FORCED',
+      p_access_point: 'ap1',
+      p_correlation: base.correlationId,
+      p_person: null,
+      p_credential: null,
+      p_decision: null,
+      p_source: 'EDGE_AGENT',
+    });
+    expect(toDoorAlarmParams({ ...base, kind: 'DOOR_HELD_OPEN' }).p_physical_outcome).toBe(
+      'DOOR_HELD_OPEN',
+    );
+  });
+  it('valida a entrada', () => {
+    for (const bad of [
+      { kind: 'DOOR_OPENED' },
+      { accessPointId: '' },
+      { correlationId: '' },
+      { idempotencyKey: '' },
+      { occurredAt: 'x' },
+      { tenantId: '' },
+    ])
+      expect(() => toDoorAlarmParams({ ...base, ...bad })).toThrow();
   });
 });

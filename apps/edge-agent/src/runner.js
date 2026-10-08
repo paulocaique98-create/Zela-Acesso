@@ -6,6 +6,7 @@ import { runBiometricErasures } from './biometric.js';
 import { pollAndRunCommands } from './command-poll.js';
 import { drainQueue } from './drain.js';
 import { sendHeartbeat } from './heartbeat.js';
+import { syncRosters } from './roster.js';
 import { syncSnapshot } from './sync.js';
 
 export const DEFAULT_INTERVALS = {
@@ -13,6 +14,7 @@ export const DEFAULT_INTERVALS = {
   syncMs: 5 * 60_000, // também é o teto do limite conhecido "cartão revogado vale até o próximo sync"
   drainMs: 10_000,
   commandsMs: 5_000, // latência de uma abertura remota
+  rosterMs: 60_000, // usuários do terminal Standalone: janelas de horário e revogações valem com até este atraso
 };
 
 /**
@@ -22,11 +24,12 @@ export const DEFAULT_INTERVALS = {
  *   transport: object,
  *   now: Date,
  *   version: string,
- *   last: { heartbeat?: number, sync?: number, drain?: number, commands?: number },
+ *   last: { heartbeat?: number, sync?: number, drain?: number, commands?: number, roster?: number },
  *   intervals?: Partial<typeof DEFAULT_INTERVALS>,
  *   random?: () => number,
  *   biometricProvider?: object | null, // omitido = Edge sem biometria (não roda a fila); null = sem provedor (perfis ficam na fila)
  *   commands?: { driver: object, key?: string | Buffer | Array<string | Buffer>, keyring?: object, agentId: string } | null, // omitido = Edge sem comando remoto
+ *   roster?: { driver: { syncRoster: Function }, pointIds: string[] } | null, // omitido = sem sincronização de usuários do terminal
  * }} input
  * @returns {Promise<{ revoked: boolean, ran: string[], results: Record<string, any> }>}
  */
@@ -40,6 +43,7 @@ export async function runOnce({
   random,
   biometricProvider: provider,
   commands,
+  roster,
 }) {
   const iv = { ...DEFAULT_INTERVALS, ...intervals };
   const due = (k, ms) => last[k] === undefined || now.getTime() - last[k] >= ms;
@@ -69,6 +73,11 @@ export async function runOnce({
     last.commands = now.getTime();
     out.results.commands = await pollAndRunCommands({ store, transport, now, ...commands });
     if (out.results.commands.status === 'revoked') return { ...out, revoked: true };
+  }
+  if (roster && due('roster', iv.rosterMs)) {
+    out.ran.push('roster');
+    last.roster = now.getTime();
+    out.results.roster = await syncRosters({ store, now, ...roster });
   }
   if (due('drain', iv.drainMs)) {
     out.ran.push('drain');
