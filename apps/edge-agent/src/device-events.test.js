@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createControlIdDriver } from '@zela/device-drivers';
-import { recordDeviceDecisions } from './device-events.js';
+import { MAX_QUEUE_DEPTH, recordDeviceDecisions } from './device-events.js';
 import { openStore } from './store.js';
 
 const PREFIX = '/api/notifications/segredo';
@@ -95,5 +95,13 @@ describe('recordDeviceDecisions', () => {
     expect(off.store.dueEvents(T0.toISOString())).toHaveLength(0);
     expect(off.dropped).toEqual(['NO_BINDING']);
     expect(dropped).toEqual([]);
+  });
+
+  it('fila cheia descarta o evento do terminal em vez de crescer sem limite', () => {
+    const { store, driver, dropped, log } = setup();
+    for (let i = 0; i < MAX_QUEUE_DEPTH; i++) store.enqueue('k' + i, {}, T0.toISOString());
+    driver.handleNotification(PREFIX + '/dao', log(7));
+    expect(dropped).toEqual(['QUEUE_FULL']);
+    expect(store.queueDepth()).toBe(MAX_QUEUE_DEPTH);
   });
 });

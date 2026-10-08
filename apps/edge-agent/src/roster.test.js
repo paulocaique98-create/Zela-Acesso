@@ -13,8 +13,12 @@ import { applySnapshot, buildIndex } from './snapshot.js';
 import { openStore } from './store.js';
 
 const PREFIX = '/api/notifications/segredo';
-const withSnap = (o, now = MONDAY_10H) => {
+const withSnap = (o, now = MONDAY_10H, { clockOk = true } = {}) => {
   const store = openStore(':memory:');
+  if (clockOk) {
+    store.setMeta('clock_drift_s', '0');
+    store.setMeta('clock_checked_at', now.toISOString());
+  }
   applySnapshot(store, { hash: 'h1', snapshot: makeSnapshot(o) }, now);
   return store;
 };
@@ -126,6 +130,59 @@ describe('syncRosters', () => {
     });
     expect(r3.ran).toEqual(['roster']);
     expect(calls).toHaveLength(2);
+  });
+});
+
+describe('syncRosters: cautela com cache defasado e relógio não confiável', () => {
+  const recorder = () => {
+    const sent = [];
+    return {
+      sent,
+      driver: {
+        syncRoster: async (id, list) => (
+          sent.push([id, list]),
+          { ok: true, code: 'OK', created: 0, removed: 0, conflicts: [] }
+        ),
+      },
+    };
+  };
+  const run = (store, driver, now) => syncRosters({ store, driver, pointIds: [IDS.point], now });
+  const DAY = 24 * 3_600_000;
+
+  it('relógio nunca verificado: ponto degraded_allow congela, degraded_deny esvazia', async () => {
+    const frozen = recorder();
+    const r1 = await run(withSnap({}, MONDAY_10H, { clockOk: false }), frozen.driver, MONDAY_10H);
+    expect(r1.points[IDS.point]).toEqual({ ok: true, code: 'FROZEN' });
+    expect(frozen.sent).toHaveLength(0);
+
+    const deny = recorder();
+    const r2 = await run(
+      withSnap({ offlineBehavior: 'degraded_deny' }, MONDAY_10H, { clockOk: false }),
+      deny.driver,
+      MONDAY_10H,
+    );
+    expect(r2.points[IDS.point].ok).toBe(true);
+    expect(deny.sent).toEqual([[IDS.point, []]]);
+  });
+
+  it('cache com mais de 7 dias: mesma regra, mesmo com relógio bom', async () => {
+    const later = new Date(MONDAY_10H.getTime() + 8 * DAY);
+    const mk = (o) => {
+      const st = withSnap(o);
+      st.setMeta('clock_checked_at', later.toISOString());
+      return st;
+    };
+    const frozen = recorder();
+    expect((await run(mk({}), frozen.driver, later)).points[IDS.point].code).toBe('FROZEN');
+    const deny = recorder();
+    await run(mk({ offlineBehavior: 'degraded_deny' }), deny.driver, later);
+    expect(deny.sent).toEqual([[IDS.point, []]]);
+  });
+
+  it('cache fresco e relógio ok: sincroniza normalmente', async () => {
+    const ok = recorder();
+    await run(withSnap(), ok.driver, MONDAY_10H);
+    expect(ok.sent[0][1]).toHaveLength(1);
   });
 });
 

@@ -6,6 +6,8 @@ import { randomUUID } from 'node:crypto';
 import { toDeviceLocalDecisionParams, toDoorAlarmParams } from '@zela/domain';
 import { personIdForDeviceUser } from './roster.js';
 
+// Teto da fila: um host da LAN que conheça o segredo do Monitor não pode lotar o disco do Edge com eventos forjados.
+export const MAX_QUEUE_DEPTH = 20_000;
 const DOOR_ALARMS = { 'door.forced': 'DOOR_FORCED', 'door.held_open': 'DOOR_HELD_OPEN' };
 
 /**
@@ -27,6 +29,7 @@ export function recordDeviceDecisions({
     if (e.type !== 'access.granted' && e.type !== 'access.denied' && !alarm) return;
     const [tenantId, siteId] = (store.getMeta('binding') ?? '/').split('/');
     if (!tenantId || !siteId) return onDropped('NO_BINDING');
+    if (store.queueDepth() >= MAX_QUEUE_DEPTH) return onDropped('QUEUE_FULL');
     try {
       const at = now();
       if (alarm) {

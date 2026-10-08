@@ -5,6 +5,8 @@
 // Não envia cartão, PIN nem biometria: a nuvem guarda só hash. O credencial é cadastrado no terminal para o id do usuário.
 
 import { OPENING_DECISIONS, evaluateAccess } from '@zela/domain';
+import { loadClockStatus } from './clock.js';
+import { DEFAULT_CONFIG } from './decide.js';
 import { loadCache } from './snapshot.js';
 
 const META_KEY = 'device_users';
@@ -101,14 +103,24 @@ export function authorizedPeople(index, accessPointId, now) {
 export async function syncRosters({ store, driver, pointIds, now }) {
   const cache = loadCache(store);
   if (!cache) return { status: 'no_cache', points: {} };
+  // Mesma cautela de decide.js: cache defasado ou relógio não confiável = a política pode estar velha ou a janela errada.
+  // Ponto degraded_deny esvazia o roster; ponto degraded_allow congela o que já está no terminal (não adiciona nem remove).
+  const degraded =
+    now.getTime() - cache.fetchedAt.getTime() > DEFAULT_CONFIG.maxSnapshotAgeMs ||
+    loadClockStatus(store, now).status === 'untrusted';
   const points = {};
   for (const pointId of pointIds) {
     try {
-      if (!cache.index.points.has(pointId)) {
+      const point = cache.index.points.get(pointId);
+      if (!point) {
         points[pointId] = { ok: false, code: 'UNKNOWN_POINT' };
         continue;
       }
-      const people = authorizedPeople(cache.index, pointId, now);
+      if (degraded && point.offlineBehavior !== 'degraded_deny') {
+        points[pointId] = { ok: true, code: 'FROZEN' };
+        continue;
+      }
+      const people = degraded ? [] : authorizedPeople(cache.index, pointId, now);
       const ids = allocateDeviceUserIds(store, people);
       const r = await driver.syncRoster(
         pointId,

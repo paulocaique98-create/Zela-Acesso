@@ -29,5 +29,5 @@ Lacunas expostas na revisão de `14-THREAT-MODEL.md`. Nenhuma está implementada
 | 7 | ~~`kid` na assinatura de comando e canal seguro de instalação da chave~~ (feito 08/10/2026, D-022: Ed25519, declarações endorse/revoke) | Injeção de comando físico | Rotação sem cópia manual |
 | 8 | ~~Verificar bucket/cifragem dos templates~~ (nuvem: só `template_ref`, guarda pgTAP `25`; cifragem no provedor real segue pendente, D-007) | Roubo de biometria | Evidência registrada (hoje "não verificado") |
 | 9 | ~~Rate limit global no `edge-gateway`~~ (feito 07/10/2026: `edge_rate_check`) | Abuso de API | Teste com múltiplas instâncias |
-| 10 | Revisão formal do checkpoint de segurança (§70) pelo dono, Security Audit + Adversarial Verify | Todas | Parecer sem críticos abertos |
+| 10 | Revisão formal do checkpoint de segurança (§70) pelo dono, Security Audit + Adversarial Verify (rascunho técnico feito 08/10/2026 em `23-SECURITY-REVIEW-8B.md`; parecer do dono PENDENTE) | Todas | Parecer sem críticos abertos |
 | 11 | Validação física de emergência (checklist de bombeiros da UF, `21-`) | Bloqueio de saída / config. de emergência | Teste em bancada documentado (Fase 8) |
