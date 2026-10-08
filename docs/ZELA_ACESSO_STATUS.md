@@ -27,6 +27,13 @@ Atualizado: 2026-10-08
 - **NÃO testado:** tablet/celular real, câmera real, Safari/Firefox, TLS/WSS real, PWA instalado, modo quiosque, carga. **Backlog (não obrigatório, decidido em 08/10/2026):** cliente TCP (app nativo; o servidor TCP já existe e é testado), (facial: feito depois, ver seção própria), revogação por empurrão (mantidos 5 min no MVP, ver `25-`). **Ação do dono (externa):** conferir o nome "Zela Pass" no INPI.
 - O `db reset` desta sessão recriou o banco local; `seed-dev` foi reexecutado.
 
+## Menu Cadastro/Gerenciar e link do Zela Pass (08/10/2026) — IMPLEMENTADO; TESTADO local; NÃO publicado
+
+- **Menu:** grupos "Cadastro" (criar: local, prédio/andar, zona, ponto, leitor, pessoa, grupo, biometria) e "Gerenciar" (listar/editar/excluir, sem criar). Mesmas telas em dois modos (`PageMode` em `RegistryPages.jsx`; rotas `/cadastro/*` e `/gerenciar/*`); as rotas antigas (`/pessoas` etc.) seguem valendo com tudo junto. Andares continuam dentro de "Prédios". Regras de acesso, Portaria e Administração inalterados.
+- **Locais:** criar/editar na UI (antes só leitura). **Endereço do Zela Pass** por Local (`sites.zela_pass_url`, migration `20261110120000`, https obrigatório, pgTAP `34_` PASS). Leitores: "Copiar link" (endereço do Edge) e "Copiar link de ativação" (leva o código em `#codigo=`, preenchido pelo leitor e apagado da barra).
+- **Testes executados:** lint, Prettier, Vitest web 26 / leitor 17, builds; Playwright `menu-modes` 2/2, `physical`, `readers`, `registry`, `operations`, `policies`, `device-command`, `tenant-isolation` PASS. `biometrics.spec` falha no banco local atual (política da Alfa ligada pelo `db:seed:face` anterior; o teste espera "desligada"), não relacionado à mudança.
+- **PENDENTE:** `supabase db push` da migration `20261110120000` em produção ANTES de publicar o app (senão Locais e Leitores consultam coluna inexistente); revisar telas no navegador; `goMenu` dos E2E usa as rotas completas para os itens de cadastro.
+
 ## Facial no Zela Pass (08/10/2026) — IMPLEMENTADO e TESTADO local; D-028
 
 - **O que existe** (`27-FACE-DESENHO-OPERACAO.md`, benchmark em `26-FACE-BENCHMARK.md`): captura no navegador do tablet (Human = detecção, malha, prova de vida passiva; **SFace** via onnxruntime-web = vetor de 128 dimensões), mensagens assinadas `face` e `face_enroll`, provedor `sface-edge` no Edge (gabarito cifrado, identificação 1:N com margem, rosto duplicado recusado, eliminação LGPD), telas "Facial" e "Cadastro facial" (PIN do operador), painel de Biometria com **código de captura**, scripts `face:models`, `face:bench`, `e2e:face`, `db:seed:face`. Desligado por padrão (`EDGE_FACE=1` + política da organização completa).

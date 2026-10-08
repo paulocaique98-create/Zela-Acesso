@@ -82,12 +82,28 @@ export function localAdmin() {
   return createClient(API, env['SERVICE_ROLE_KEY'], { auth: { persistSession: false } });
 }
 
+const FULL_ROUTES = {
+  Locais: '/sites',
+  'Prédios e andares': '/predios',
+  Zonas: '/zonas',
+  'Pontos de acesso': '/pontos',
+  'Leitores Zela Pass': '/leitores',
+  Pessoas: '/pessoas',
+  Grupos: '/grupos',
+};
+
 /**
  * Navega pelo menu lateral. Os grupos comecam fechados (acordeao): abre o grupo que contem o link, se preciso.
  * @param {import('@playwright/test').Page} page
  * @param {{ name: string | RegExp, exact?: boolean }} opts
  */
 export async function goMenu(page, opts) {
+  // Cadastro (criar) e Gerenciar (editar) dividem as telas de cadastro; os testes de CRUD usam a rota completa.
+  const full = typeof opts.name === 'string' ? FULL_ROUTES[opts.name] : undefined;
+  if (full) {
+    await page.goto(full);
+    return;
+  }
   const nav = page.getByRole('navigation', { name: 'Principal' });
   await nav.waitFor();
   const linkOpts = { ...opts, includeHidden: true };

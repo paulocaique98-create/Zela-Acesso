@@ -25,28 +25,55 @@ import { ShellFrame } from './ShellFrame';
 const NAV = [
   { to: '/', label: 'Visão geral', icon: LayoutDashboard, permission: null },
   {
-    label: 'Locais e estrutura',
+    label: 'Cadastro',
     icon: Building2,
     children: [
-      { to: '/sites', label: 'Locais', permission: 'site:read', siteLevel: true },
-      { to: '/predios', label: 'Prédios e andares', permission: 'zone:read', siteLevel: true },
-      { to: '/zonas', label: 'Zonas', permission: 'zone:read', siteLevel: true },
+      { to: '/cadastro/locais', label: 'Cadastrar local', permission: 'site:create' },
+      { to: '/cadastro/predios', label: 'Cadastrar prédio ou andar', permission: 'zone:create' },
+      { to: '/cadastro/zonas', label: 'Cadastrar zona', permission: 'zone:create' },
       {
-        to: '/pontos',
+        to: '/cadastro/pontos',
+        label: 'Cadastrar ponto de acesso',
+        permission: 'access_point:create',
+        siteLevel: true,
+      },
+      {
+        to: '/cadastro/leitores',
+        label: 'Cadastrar leitor',
+        permission: 'reader:create',
+        siteLevel: true,
+      },
+      { to: '/cadastro/pessoas', label: 'Cadastrar pessoa', permission: 'person:create' },
+      { to: '/cadastro/grupos', label: 'Cadastrar grupo', permission: 'group:create' },
+      { to: '/cadastro/biometria', label: 'Cadastrar biometria', permission: 'biometric:read' },
+    ],
+  },
+  {
+    label: 'Gerenciar',
+    icon: UsersRound,
+    children: [
+      { to: '/gerenciar/locais', label: 'Locais', permission: 'site:read', siteLevel: true },
+      {
+        to: '/gerenciar/predios',
+        label: 'Prédios e andares',
+        permission: 'zone:read',
+        siteLevel: true,
+      },
+      { to: '/gerenciar/zonas', label: 'Zonas', permission: 'zone:read', siteLevel: true },
+      {
+        to: '/gerenciar/pontos',
         label: 'Pontos de acesso',
         permission: 'access_point:read',
         siteLevel: true,
       },
-      { to: '/leitores', label: 'Leitores Zela Pass', permission: 'reader:read', siteLevel: true },
-    ],
-  },
-  {
-    label: 'Pessoas',
-    icon: UsersRound,
-    children: [
-      { to: '/pessoas', label: 'Pessoas', permission: 'person:read' },
-      { to: '/grupos', label: 'Grupos', permission: 'group:read' },
-      { to: '/biometria', label: 'Biometria', permission: 'biometric:read' },
+      {
+        to: '/gerenciar/leitores',
+        label: 'Leitores Zela Pass',
+        permission: 'reader:read',
+        siteLevel: true,
+      },
+      { to: '/gerenciar/pessoas', label: 'Pessoas', permission: 'person:read' },
+      { to: '/gerenciar/grupos', label: 'Grupos', permission: 'group:read' },
     ],
   },
   {

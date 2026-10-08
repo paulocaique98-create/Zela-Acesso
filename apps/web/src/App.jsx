@@ -9,7 +9,7 @@ import { PoliciesPage } from './pages/PolicyPages';
 import { OperationsPage } from './pages/OperationsPages';
 import { VisitsPage } from './pages/VisitPages';
 import { OrgBiometricsPage } from './pages/BiometricPages';
-import { GroupsPage, PeoplePage, SitesPage, ZonesPage } from './pages/RegistryPages';
+import { GroupsPage, PageMode, PeoplePage, SitesPage, ZonesPage } from './pages/RegistryPages';
 import { HolidaysPage, SchedulesPage } from './pages/SchedulePages';
 import { LoginPage } from './pages/LoginPage';
 import { Toaster } from './components/Toaster';
@@ -23,6 +23,17 @@ import { PlatformSupportPage } from './platform/SupportPage';
 import { TenantModulesPage } from './platform/TenantModulesPage';
 import { TenantsPage } from './platform/TenantsPage';
 import { WorkspaceProvider } from './workspace/WorkspaceProvider';
+
+// Cadastro (criar) e Gerenciar (editar) usam as mesmas telas em modos diferentes; as rotas antigas seguem valendo.
+const REGISTRY_ROUTES = [
+  ['locais', SitesPage],
+  ['predios', BuildingsPage],
+  ['zonas', ZonesPage],
+  ['pontos', AccessPointsPage],
+  ['leitores', ReadersPage],
+  ['pessoas', PeoplePage],
+  ['grupos', GroupsPage],
+];
 
 export function App() {
   return (
@@ -50,6 +61,27 @@ export function App() {
               </Route>
               <Route element={<AppShell />}>
                 <Route index element={<OverviewPage />} />
+                {REGISTRY_ROUTES.flatMap(([path, Page]) => [
+                  <Route
+                    key={`c-${path}`}
+                    path={`cadastro/${path}`}
+                    element={
+                      <PageMode mode="create">
+                        <Page />
+                      </PageMode>
+                    }
+                  />,
+                  <Route
+                    key={`g-${path}`}
+                    path={`gerenciar/${path}`}
+                    element={
+                      <PageMode mode="manage">
+                        <Page />
+                      </PageMode>
+                    }
+                  />,
+                ])}
+                <Route path="cadastro/biometria" element={<OrgBiometricsPage />} />
                 <Route path="sites" element={<SitesPage />} />
                 <Route path="predios" element={<BuildingsPage />} />
                 <Route path="zonas" element={<ZonesPage />} />

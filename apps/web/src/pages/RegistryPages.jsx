@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { ConfirmModal } from '../components/ConfirmModal';
 import { DataTable } from '../components/DataTable';
 import { safeMessage } from '../lib/errors';
@@ -57,13 +57,39 @@ export function Modal({ title, onClose, children }) {
   );
 }
 
+/**
+ * Modo da tela, definido pela rota do menu: 'create' (Cadastro: abre o formulario de novo, lista so para consulta),
+ * 'manage' (Gerenciar: lista com editar/excluir, sem criar) ou 'both' (rotas antigas, tudo junto).
+ * @type {import('react').Context<'create' | 'manage' | 'both'>}
+ */
+const PageModeContext = createContext(/** @type {'create' | 'manage' | 'both'} */ ('both'));
+
+/** @param {{ mode: 'create' | 'manage', children: import('react').ReactNode }} props */
+export function PageMode({ mode, children }) {
+  return <PageModeContext.Provider value={mode}>{children}</PageModeContext.Provider>;
+}
+
+export const usePageMode = () => useContext(PageModeContext);
+
 /** @param {{ title: string, canCreate: boolean, onNew: () => void, children: import('react').ReactNode }} props */
 export function PageHead({ title, canCreate, onNew, children }) {
+  const mode = usePageMode();
+  const showNew = canCreate && mode !== 'manage';
+  useEffect(() => {
+    // Cadastro: a pessoa veio para criar, entao o formulario ja abre (so na entrada da tela).
+    if (mode === 'create' && canCreate) onNew();
+  }, [mode, canCreate]);
   return (
     <section className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h1 className="text-xl font-semibold">{title}</h1>
-        {canCreate && (
+        <h1 className="text-xl font-semibold">
+          {mode === 'create'
+            ? `Cadastro · ${title}`
+            : mode === 'manage'
+              ? `Gerenciar · ${title}`
+              : title}
+        </h1>
+        {showNew && (
           <button type="button" className={BTN_PRIMARY} onClick={onNew}>
             Novo
           </button>
@@ -119,6 +145,9 @@ export function DeleteConfirm({ row, table, label, onDone, onCancel }) {
 
 /** @param {{ canEdit: boolean, canDelete: boolean, onEdit: () => void, onDelete: () => void, extra?: import('react').ReactNode }} props */
 export function RowActions({ canEdit, canDelete, onEdit, onDelete, extra }) {
+  const creating = usePageMode() === 'create'; // Cadastro cria; editar e excluir ficam em Gerenciar
+  canEdit = canEdit && !creating;
+  canDelete = canDelete && !creating;
   return (
     <div className="flex flex-wrap gap-2">
       {extra}

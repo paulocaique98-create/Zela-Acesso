@@ -13,7 +13,15 @@ import {
 import { useWorkspace } from '../workspace/WorkspaceProvider';
 import { Guard, Status } from './DataPages';
 import { Qr } from './VisitPages';
-import { BTN_GHOST, BTN_PRIMARY, Field, INPUT, Modal, PageHead } from './RegistryPages';
+import {
+  BTN_GHOST,
+  BTN_PRIMARY,
+  Field,
+  INPUT,
+  Modal,
+  PageHead,
+  usePageMode,
+} from './RegistryPages';
 
 const fmt = (iso) =>
   iso ? new Date(iso).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' }) : '—';
@@ -194,6 +202,7 @@ function RevokeForm({ reader, onDone, onCancel }) {
 
 export function ReadersPage() {
   const { current, allowed, allowedInAnyScope } = useWorkspace();
+  const creatingMode = usePageMode() === 'create';
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState(/** @type {any} */ (null));
   const [revoking, setRevoking] = useState(/** @type {any} */ (null));
@@ -280,7 +289,7 @@ export function ReadersPage() {
                           >
                             Copiar link
                           </button>
-                          {allowed('reader:revoke', r.site_id) && (
+                          {!creatingMode && allowed('reader:revoke', r.site_id) && (
                             <button
                               type="button"
                               className={`${BTN_GHOST} text-error`}
