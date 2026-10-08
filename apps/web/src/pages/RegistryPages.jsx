@@ -856,6 +856,124 @@ function GroupMembers({ group, tenantId, canEdit, onClose }) {
   );
 }
 
+// ---------------------------------------------------------------- Locais
+
+const TIMEZONES = [
+  ['America/Sao_Paulo', 'Brasília (UTC−3)'],
+  ['America/Manaus', 'Manaus (UTC−4)'],
+  ['America/Cuiaba', 'Cuiabá (UTC−4)'],
+  ['America/Rio_Branco', 'Rio Branco (UTC−5)'],
+  ['America/Noronha', 'Fernando de Noronha (UTC−2)'],
+];
+
+function SiteForm({ site, tenantId, onDone }) {
+  const [busy, setBusy] = useState(false);
+  const [f, setF] = useState({
+    name: site?.name ?? '',
+    timezone: site?.timezone ?? 'America/Sao_Paulo',
+  });
+  const submit = (e) => {
+    e.preventDefault();
+    const body = { name: f.name.trim(), timezone: f.timezone };
+    void save(
+      () =>
+        site
+          ? supabase.from('sites').update(body).eq('id', site.id)
+          : supabase.from('sites').insert({ ...body, tenant_id: tenantId }),
+      'Local salvo.',
+      onDone,
+      setBusy,
+    );
+  };
+  const zones = TIMEZONES.some(([tz]) => tz === f.timezone)
+    ? TIMEZONES
+    : [...TIMEZONES, [f.timezone, f.timezone]];
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <Field label="Nome do local">
+        <input
+          className={INPUT}
+          required
+          minLength={2}
+          maxLength={120}
+          value={f.name}
+          onChange={(e) => setF({ ...f, name: e.target.value })}
+        />
+      </Field>
+      <Field label="Fuso horário">
+        <select
+          className={INPUT}
+          value={f.timezone}
+          onChange={(e) => setF({ ...f, timezone: e.target.value })}
+        >
+          {zones.map(([tz, text]) => (
+            <option key={tz} value={tz}>
+              {text}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <button type="submit" className={BTN_PRIMARY} disabled={busy}>
+        {busy ? 'Salvando…' : 'Salvar'}
+      </button>
+    </form>
+  );
+}
+
+export function SitesPage() {
+  const { current, allowed } = useWorkspace();
+  const [editing, setEditing] = useState(/** @type {any} */ (null));
+  const q = useQuery(async () => {
+    const { data, error } = await supabase
+      .from('sites')
+      .select('id, name, timezone')
+      .eq('tenant_id', current?.id ?? '')
+      .order('name')
+      .limit(200);
+    if (error) throw error;
+    return data;
+  }, [current?.id]);
+  const done = () => {
+    setEditing(null);
+    q.reload();
+  };
+  return (
+    <Guard permission="site:read" siteLevel>
+      <PageHead title="Locais" canCreate={allowed('site:create')} onNew={() => setEditing({})}>
+        <Status q={q}>
+          {(rows) => (
+            <DataTable
+              caption="Locais"
+              headers={['Nome', 'Fuso horário', 'Ações']}
+              empty="Nenhum local cadastrado."
+              rows={rows.map((r) => [
+                r.name,
+                TIMEZONES.find(([tz]) => tz === r.timezone)?.[1] ?? r.timezone,
+                <RowActions
+                  key={r.id}
+                  canEdit={allowed('site:update', r.id)}
+                  canDelete={false}
+                  onEdit={() => setEditing(r)}
+                  onDelete={() => {}}
+                />,
+              ])}
+            />
+          )}
+        </Status>
+        {editing && (
+          <Modal title={editing.id ? 'Editar local' : 'Novo local'} onClose={done}>
+            <SiteForm
+              site={editing.id ? editing : null}
+              tenantId={current?.id ?? ''}
+              onDone={done}
+            />
+          </Modal>
+        )}
+      </PageHead>
+    </Guard>
+  );
+}
+
 export function GroupsPage() {
   const { current, allowed } = useWorkspace();
   const [editing, setEditing] = useState(/** @type {any} */ (null));

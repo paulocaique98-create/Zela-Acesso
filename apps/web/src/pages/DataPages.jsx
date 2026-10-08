@@ -59,34 +59,6 @@ export function OverviewPage() {
   );
 }
 
-export function SitesPage() {
-  const { current } = useWorkspace();
-  const q = useQuery(async () => {
-    const { data, error } = await supabase
-      .from('sites')
-      .select('id, name, timezone')
-      .eq('tenant_id', current?.id ?? '')
-      .order('name')
-      .limit(200);
-    if (error) throw error;
-    return data;
-  }, [current?.id]);
-  return (
-    <Guard permission="site:read" siteLevel>
-      <Status q={q}>
-        {(rows) => (
-          <DataTable
-            caption="Locais"
-            headers={['Nome', 'Fuso horário']}
-            rows={rows.map((r) => [r.name, r.timezone])}
-            empty="Nenhum local cadastrado."
-          />
-        )}
-      </Status>
-    </Guard>
-  );
-}
-
 export function MembersPage() {
   const { current } = useWorkspace();
   const q = useQuery(async () => {
