@@ -8,7 +8,7 @@ const HEX64 = /^[0-9a-f]{64}$/i;
 /**
  * @param {Record<string, string | undefined>} env
  * @returns {{ gatewayUrl: string, agentId: string, agentSecret: string, dbPath: string, version: string,
- *   commandKeys: string[], commandPubKeys: Record<string, string>, commandTofu: boolean, deviceKey: string | null, storeKey: string | null, driver: 'none' | 'mock' | 'controlid', controlIdPoints: Record<string, any>, monitor: { bind: string, port: number, secret: string, advertise: string } | null, mockPoints: string[], tickMs: number }}
+ *   commandKeys: string[], commandPubKeys: Record<string, string>, commandTofu: boolean, deviceKey: string | null, storeKey: string | null, driver: 'none' | 'mock' | 'controlid', controlIdPoints: Record<string, any>, monitor: { bind: string, port: number, secret: string, advertise: string } | null, reader: { bind: string, port: number, tcpPort: number | null, tlsCert: string | null, tlsKey: string | null, webDir: string | null } | null, mockPoints: string[], tickMs: number }}
  */
 export function loadConfig(env) {
   const need = (k) => {
@@ -100,6 +100,40 @@ export function loadConfig(env) {
     monitor = { bind, port, secret, advertise };
   }
 
+  // Zela Pass (D-027): leitores em tablet/celular. Desligado sem EDGE_READER_BIND. A senha digitada trafega no corpo da
+  // mensagem, então fora de loopback em produção TLS é obrigatório (HTTPS/WSS e TCP com TLS).
+  let reader = null;
+  const readerBind = env.EDGE_READER_BIND?.trim();
+  if (readerBind) {
+    const portOf = (k, dflt) => {
+      const raw = env[k]?.trim();
+      if (!raw) return dflt;
+      const n = Number(raw);
+      if (!Number.isInteger(n) || n < 1 || n > 65535) throw new Error(`${k} inválida`);
+      return n;
+    };
+    const tlsCert = env.EDGE_READER_TLS_CERT?.trim() || null;
+    const tlsKey = env.EDGE_READER_TLS_KEY?.trim() || null;
+    if (!!tlsCert !== !!tlsKey)
+      throw new Error('EDGE_READER_TLS_CERT e EDGE_READER_TLS_KEY devem ser definidas juntas');
+    const loopback = ['127.0.0.1', '::1', 'localhost'].includes(readerBind);
+    if (!tlsCert && !loopback && env.NODE_ENV === 'production')
+      throw new Error(
+        'leitores fora de loopback em produção exigem TLS (EDGE_READER_TLS_CERT/KEY)',
+      );
+    const port = portOf('EDGE_READER_PORT', 8443);
+    const tcpPort = portOf('EDGE_READER_TCP_PORT', null);
+    if (tcpPort === port) throw new Error('EDGE_READER_TCP_PORT deve diferir de EDGE_READER_PORT');
+    reader = {
+      bind: readerBind,
+      port,
+      tcpPort,
+      tlsCert,
+      tlsKey,
+      webDir: env.EDGE_READER_WEB_DIR?.trim() || null,
+    };
+  }
+
   const tickMs = Number(env.EDGE_TICK_MS ?? 5000);
   if (!Number.isFinite(tickMs) || tickMs < 250) throw new Error('EDGE_TICK_MS inválido (mín. 250)');
 
@@ -117,6 +151,7 @@ export function loadConfig(env) {
     driver,
     controlIdPoints,
     monitor,
+    reader,
     mockPoints: (env.EDGE_MOCK_POINTS ?? '')
       .split(',')
       .map((s) => s.trim())

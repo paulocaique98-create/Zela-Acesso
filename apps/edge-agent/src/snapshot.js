@@ -88,10 +88,22 @@ export function buildIndex(snapshot) {
   const biometricCredentialById = new Map(
     snapshot.credentials.filter((c) => c.type === 'biometric').map((c) => [c.id, c]),
   );
+  const peopleByRef = new Map(
+    snapshot.people.filter((p) => p.refHash).map((p) => [p.refHash, p.id]),
+  );
+  const readers = new Map((snapshot.readers ?? []).map((r) => [r.id, r]));
+  const readersByCodeHash = new Map(
+    (snapshot.readers ?? [])
+      .filter((r) => r.status === 'pending' && r.enrollmentTokenHash)
+      .map((r) => [r.enrollmentTokenHash, r]),
+  );
   const visitByPerson = new Map((snapshot.visits ?? []).map((v) => [v.personId, v]));
   return {
     snapshot,
     visitByPerson,
+    peopleByRef,
+    readers,
+    readersByCodeHash,
     biometricSettings: bio?.settings ?? null,
     biometricProfileByPerson,
     biometricCredentialById,

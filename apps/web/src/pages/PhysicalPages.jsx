@@ -16,6 +16,8 @@ import {
   HARDWARE_REF_MAX,
   OFFLINE_BEHAVIORS,
   OFFLINE_BEHAVIOR_LABEL,
+  POINT_ACTUATIONS,
+  POINT_ACTUATION_LABEL,
   accessPointWarnings,
   validateDoorOpenTimeout,
 } from '@zela/domain';
@@ -325,6 +327,7 @@ function AccessPointForm({ point, sites, zones, schedules, tenantId, onDone }) {
     type: point?.type ?? 'door',
     direction: point?.direction ?? 'bidirectional',
     status: point?.status ?? 'active',
+    actuation: point?.actuation ?? 'driver',
     controller_ref: point?.controller_ref ?? '',
     entry_reader_ref: point?.entry_reader_ref ?? '',
     exit_reader_ref: point?.exit_reader_ref ?? '',
@@ -352,6 +355,7 @@ function AccessPointForm({ point, sites, zones, schedules, tenantId, onDone }) {
       type: f.type,
       direction: f.direction,
       status: f.status,
+      actuation: f.actuation,
       controller_ref: ref('controller_ref'),
       entry_reader_ref: ref('entry_reader_ref'),
       exit_reader_ref: ref('exit_reader_ref'),
@@ -453,6 +457,13 @@ function AccessPointForm({ point, sites, zones, schedules, tenantId, onDone }) {
       {select('Tipo', 'type', ACCESS_POINT_TYPES, ACCESS_POINT_TYPE_LABEL)}
       {select('Direção', 'direction', ACCESS_POINT_DIRECTIONS, ACCESS_POINT_DIRECTION_LABEL)}
       {select('Situação', 'status', ['active', 'inactive'], STATUS_LABEL)}
+      {select('Modo do ponto', 'actuation', POINT_ACTUATIONS, POINT_ACTUATION_LABEL)}
+      {f.actuation === 'none' && (
+        <p role="note" className="text-sm text-on-surface-variant">
+          Somente registro: o ponto identifica e registra a entrada/saída (por exemplo, num leitor
+          Zela Pass), mas nunca envia comando para porta, catraca ou cancela.
+        </p>
+      )}
       <Field label="Janela de acesso (opcional)">
         <select className={INPUT} value={f.schedule_id} onChange={set('schedule_id')}>
           <option value="">Sem janela (sempre)</option>
@@ -603,7 +614,7 @@ export function AccessPointsPage() {
       supabase
         .from('access_points')
         .select(
-          'id, site_id, zone_id, name, description, type, direction, status, controller_ref, entry_reader_ref, exit_reader_ref, sensor_ref, relay_ref, schedule_id, emergency_behavior, offline_behavior, door_open_timeout_seconds',
+          'id, site_id, zone_id, name, description, type, direction, status, controller_ref, entry_reader_ref, exit_reader_ref, sensor_ref, relay_ref, schedule_id, emergency_behavior, offline_behavior, door_open_timeout_seconds, actuation',
         )
         .eq('tenant_id', tenantId)
         .order('name')
@@ -674,6 +685,7 @@ export function AccessPointsPage() {
                     'Tipo',
                     'Local / zona',
                     'Direção',
+                    'Modo',
                     'Janela',
                     'Situação',
                     'Ações',
@@ -684,6 +696,7 @@ export function AccessPointsPage() {
                     ACCESS_POINT_TYPE_LABEL[p.type],
                     `${siteName.get(p.site_id) ?? '—'} / ${zoneName.get(p.zone_id) ?? '—'}`,
                     ACCESS_POINT_DIRECTION_LABEL[p.direction],
+                    p.actuation === 'none' ? 'Somente registro' : 'Com atuação',
                     p.schedule_id ? (scheduleName.get(p.schedule_id) ?? '—') : 'Sem janela',
                     STATUS_LABEL[p.status],
                     <RowActions

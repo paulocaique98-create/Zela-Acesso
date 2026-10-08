@@ -2,7 +2,7 @@
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
-const DIST = join(process.cwd(), 'apps', 'web', 'dist');
+const DISTS = ['web', 'reader'].map((app) => join(process.cwd(), 'apps', app, 'dist'));
 const PATTERNS = [
   [/sb_secret_[A-Za-z0-9_-]{10,}/, 'chave sb_secret_'],
   [/service_role/, 'referencia a service_role'],
@@ -18,12 +18,14 @@ function walk(dir) {
   });
 }
 
-let files;
-try {
-  files = walk(DIST);
-} catch {
-  console.error(`dist nao encontrado em ${DIST}. Rode "pnpm build" antes.`);
-  process.exit(2);
+let files = [];
+for (const dist of DISTS) {
+  try {
+    files = files.concat(walk(dist));
+  } catch {
+    console.error(`dist nao encontrado em ${dist}. Rode "pnpm build" antes.`);
+    process.exit(2);
+  }
 }
 
 const hits = [];

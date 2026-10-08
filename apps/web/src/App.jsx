@@ -4,6 +4,7 @@ import { MfaGate } from './auth/MfaGate';
 import { AppShell } from './components/AppShell';
 import { AuditPage, MembersPage, OverviewPage, SitesPage } from './pages/DataPages';
 import { AccessPointsPage, BuildingsPage } from './pages/PhysicalPages';
+import { ReadersPage } from './pages/ReaderPages';
 import { PoliciesPage } from './pages/PolicyPages';
 import { OperationsPage } from './pages/OperationsPages';
 import { VisitsPage } from './pages/VisitPages';
@@ -53,6 +54,7 @@ export function App() {
                 <Route path="predios" element={<BuildingsPage />} />
                 <Route path="zonas" element={<ZonesPage />} />
                 <Route path="pontos" element={<AccessPointsPage />} />
+                <Route path="leitores" element={<ReadersPage />} />
                 <Route path="pessoas" element={<PeoplePage />} />
                 <Route path="grupos" element={<GroupsPage />} />
                 <Route path="politicas" element={<PoliciesPage />} />

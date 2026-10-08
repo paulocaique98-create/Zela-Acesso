@@ -5,6 +5,7 @@
 import { runBiometricErasures } from './biometric.js';
 import { pollAndRunCommands } from './command-poll.js';
 import { drainQueue } from './drain.js';
+import { reportEnrolledReaders } from './reader-report.js';
 import { sendHeartbeat } from './heartbeat.js';
 import { syncRosters } from './roster.js';
 import { syncSnapshot } from './sync.js';
@@ -14,6 +15,7 @@ export const DEFAULT_INTERVALS = {
   syncMs: 5 * 60_000, // também é o teto do limite conhecido "cartão revogado vale até o próximo sync"
   drainMs: 10_000,
   commandsMs: 5_000, // latência de uma abertura remota
+  readersMs: 15_000, // leitores Zela Pass ativados aqui e ainda não informados à nuvem
   rosterMs: 60_000, // usuários do terminal Standalone: janelas de horário e revogações valem com até este atraso
 };
 
@@ -24,7 +26,7 @@ export const DEFAULT_INTERVALS = {
  *   transport: object,
  *   now: Date,
  *   version: string,
- *   last: { heartbeat?: number, sync?: number, drain?: number, commands?: number, roster?: number },
+ *   last: { heartbeat?: number, sync?: number, drain?: number, commands?: number, roster?: number, readers?: number },
  *   intervals?: Partial<typeof DEFAULT_INTERVALS>,
  *   random?: () => number,
  *   biometricProvider?: object | null, // omitido = Edge sem biometria (não roda a fila); null = sem provedor (perfis ficam na fila)
@@ -78,6 +80,15 @@ export async function runOnce({
     out.ran.push('roster');
     last.roster = now.getTime();
     out.results.roster = await syncRosters({ store, now, ...roster });
+  }
+  if (due('readers', iv.readersMs)) {
+    last.readers = now.getTime();
+    const rep = await reportEnrolledReaders({ store, transport, now });
+    if (rep.status !== 'idle') {
+      out.ran.push('readers');
+      out.results.readers = rep;
+    }
+    if (rep.status === 'revoked') return { ...out, revoked: true };
   }
   if (due('drain', iv.drainMs)) {
     out.ran.push('drain');

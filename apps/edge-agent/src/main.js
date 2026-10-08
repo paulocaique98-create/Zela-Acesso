@@ -1,4 +1,5 @@
 // Entrypoint do daemon: `node apps/edge-agent/src/main.js`. Configuração só por ambiente (ver config.js).
+import { readFileSync } from 'node:fs';
 import { createControlIdDriver, createMockHardware } from '@zela/device-drivers';
 import { loadConfig } from './config.js';
 import { recordDeviceDecisions } from './device-events.js';
@@ -7,6 +8,9 @@ import { startTerminalSetup } from './monitor-setup.js';
 import { runLoop } from './runner.js';
 import { openStore } from './store.js';
 import { createHttpTransport } from './transport.js';
+import { createReaderHttpServer } from './reader-http-server.js';
+import { createReaderService } from './reader-service.js';
+import { createReaderTcpServer } from './reader-tcp-server.js';
 import { createKeyring } from './trust.js';
 
 const cfg = loadConfig(process.env);
@@ -59,6 +63,55 @@ if (driver && cfg.driver === 'controlid') {
   await monitorServer.listen();
 }
 
+// Zela Pass (D-027): leitores em tablet/celular. O Edge só "sabe" que está online se a nuvem respondeu há pouco.
+const OFFLINE_AFTER_MS = 3 * 60_000;
+let lastCloudOkMs = null;
+const noteCloud = (r) => {
+  const ok =
+    r.results.heartbeat?.status === 'ok' ||
+    ['updated', 'unchanged'].includes(r.results.sync?.status) ||
+    ['idle', 'drained'].includes(r.results.drain?.status);
+  if (ok) lastCloudOkMs = Date.now();
+};
+const readerServers = [];
+if (cfg.reader) {
+  const tls =
+    cfg.reader.tlsCert && cfg.reader.tlsKey
+      ? { cert: readFileSync(cfg.reader.tlsCert), key: readFileSync(cfg.reader.tlsKey) }
+      : null;
+  const service = createReaderService({
+    store,
+    driver,
+    isOffline: () => lastCloudOkMs === null || Date.now() - lastCloudOkMs > OFFLINE_AFTER_MS,
+  });
+  const onError = () => console.error('leitor: erro ao tratar mensagem');
+  readerServers.push(
+    createReaderHttpServer({
+      service,
+      bind: cfg.reader.bind,
+      port: cfg.reader.port,
+      tls,
+      webDir: cfg.reader.webDir,
+      onError,
+    }),
+  );
+  if (cfg.reader.tcpPort)
+    readerServers.push(
+      createReaderTcpServer({
+        service,
+        bind: cfg.reader.bind,
+        port: cfg.reader.tcpPort,
+        tls,
+        onError,
+      }),
+    );
+  for (const s of readerServers) await s.listen();
+  console.error(
+    `leitores: ${tls ? 'https/wss' : 'http/ws (sem TLS)'} em ${cfg.reader.bind}:${cfg.reader.port}` +
+      (cfg.reader.tcpPort ? `, tcp em ${cfg.reader.tcpPort}` : ''),
+  );
+}
+
 const ac = new AbortController();
 for (const s of ['SIGINT', 'SIGTERM']) process.on(s, () => ac.abort());
 
@@ -97,9 +150,11 @@ const outcome = await runLoop({
       : null,
   tickMs: cfg.tickMs,
   signal: ac.signal,
+  onResult: noteCloud,
   // sem segredo/payload: só o nome das etapas e o status
   onError: (e) => console.error('rodada falhou:', e instanceof Error ? e.message : 'erro'),
 });
 await monitorServer?.close();
+for (const s of readerServers) await s.close();
 console.error(`agente encerrado: ${outcome}`);
 process.exit(outcome === 'revoked' ? 2 : 0);

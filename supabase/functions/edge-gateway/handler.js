@@ -312,6 +312,22 @@ export async function handle(req, deps) {
       // false = agente invalido OU perfil nao elegivel (ja apagado / outro tenant); a RPC nao distingue, o gateway tambem nao.
       return json(200, { confirmed: data === true });
     }
+    case 'reader_enrolled': {
+      // Zela Pass (D-027): o Edge conferiu o codigo e registrou a chave publica do leitor; reflete na nuvem.
+      const reader = typeof body.readerId === 'string' ? body.readerId : '';
+      const pub = typeof body.publicKey === 'string' ? body.publicKey : '';
+      if (!AGENT_ID_RE.test(reader) || !/^[0-9a-f]{64}$/.test(pub))
+        return json(400, { error: 'invalid_body' });
+      const { data, error } = await deps.rpc('edge_report_reader_enrolled', {
+        ...base,
+        p_reader: reader,
+        p_public_key: pub,
+        p_label: typeof body.label === 'string' ? body.label.slice(0, 80) : null,
+      });
+      if (error) return fail();
+      // false = agente invalido OU leitor nao elegivel (ja ativo/revogado/outro tenant); a RPC nao distingue.
+      return json(200, { recorded: data === true });
+    }
     case 'poll_commands': {
       // Prefere v2 (Ed25519 + kid, D-022); sem chave de assinatura cai para v1 (HMAC, legado). Sem nenhuma das
       // duas nada e reivindicado nem assinado (falha fechada; o pedido segue pendente).

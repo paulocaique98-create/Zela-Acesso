@@ -1,6 +1,8 @@
 // Fase 3C: converte uma AccessDecision em parâmetros de `record_access_event` (server-side, service_role).
 // Função pura: sem I/O. O hash/seq/recorded_at são calculados pelo banco (cadeia por tenant); nunca aqui.
 
+import { READER_METHODS } from './reader.js';
+
 export const ACCESS_EVENT_SOURCES = ['ENGINE', 'EDGE_AGENT', 'DEVICE', 'ADMIN'];
 export const PHYSICAL_OUTCOMES = [
   'DOOR_OPENED',
@@ -16,6 +18,7 @@ export const PHYSICAL_OUTCOMES = [
  *   tenantId: string, siteId: string, occurredAt: Date | string,
  *   source?: 'ENGINE' | 'EDGE_AGENT' | 'DEVICE' | 'ADMIN',
  *   physicalOutcome?: string | null, correlationId?: string | null, idempotencyKey?: string | null,
+ *   reader?: { readerId: string, method: string, mode: 'register_only' | 'actuate' } | null,  // Zela Pass (D-027)
  * }} input
  * @returns {Record<string, unknown>} argumentos nomeados da RPC `record_access_event`
  */
@@ -32,6 +35,10 @@ export function toAccessEventParams(input) {
   if (Number.isNaN(at.getTime())) throw new Error('occurredAt inválido');
 
   const ev = decision.evidence ?? {};
+  // Marcação por leitor (Zela Pass): só id do leitor, método e modo (allowlist); nunca o valor lido.
+  const r = input.reader;
+  if (r && (!READER_METHODS.includes(r.method) || !['register_only', 'actuate'].includes(r.mode)))
+    throw new Error('reader inválido');
   return {
     p_tenant: tenantId,
     p_site: siteId,
@@ -55,6 +62,7 @@ export function toAccessEventParams(input) {
       offline: ev.offline ?? false,
       evaluatedAt: ev.evaluatedAt ?? null,
       steps: Array.isArray(ev.steps) ? ev.steps.slice(0, 50) : [],
+      ...(r ? { reader: { readerId: String(r.readerId), method: r.method, mode: r.mode } } : {}),
     },
     p_idempotency_key: input.idempotencyKey ?? null,
   };

@@ -10,3 +10,4 @@ export * from './access-engine.js';
 export * from './access-event.js';
 export * from './antipassback.js';
 export * from './visit.js';
+export * from './reader.js';

@@ -17,7 +17,7 @@ export const TENANT_ROLES = [
 export const PLATFORM_ROLES = ['platform_owner', 'platform_support'];
 /** @typedef {'platform_owner' | 'platform_support'} PlatformRole */
 
-/** @typedef {'tenant:update' | 'member:read' | 'member:invite' | 'member:update_role' | 'member:remove' | 'site:read' | 'site:create' | 'site:update' | 'site:delete' | 'audit:read' | 'zone:read' | 'zone:create' | 'zone:update' | 'zone:delete' | 'person:read' | 'person:create' | 'person:update' | 'person:delete' | 'group:read' | 'group:create' | 'group:update' | 'group:delete' | 'credential:read' | 'credential:create' | 'credential:update' | 'schedule:read' | 'schedule:create' | 'schedule:update' | 'schedule:delete' | 'access_point:read' | 'access_point:create' | 'access_point:update' | 'access_point:delete' | 'policy:read' | 'policy:create' | 'policy:update' | 'policy:delete' | 'support:read' | 'support:write' | 'access_event:read' | 'access_event:correct' | 'presence:read' | 'presence:reset' | 'edge_agent:read' | 'edge_agent:create' | 'edge_agent:revoke' | 'visit:read' | 'visit:create' | 'visit:update' | 'visit:checkin' | 'alert:read' | 'alert:manage' | 'biometric:read' | 'biometric:manage' | 'biometric:enroll' | 'device:command' | 'privacy:read' | 'privacy:manage'} Permission */
+/** @typedef {'tenant:update' | 'member:read' | 'member:invite' | 'member:update_role' | 'member:remove' | 'site:read' | 'site:create' | 'site:update' | 'site:delete' | 'audit:read' | 'zone:read' | 'zone:create' | 'zone:update' | 'zone:delete' | 'person:read' | 'person:create' | 'person:update' | 'person:delete' | 'group:read' | 'group:create' | 'group:update' | 'group:delete' | 'credential:read' | 'credential:create' | 'credential:update' | 'schedule:read' | 'schedule:create' | 'schedule:update' | 'schedule:delete' | 'access_point:read' | 'access_point:create' | 'access_point:update' | 'access_point:delete' | 'policy:read' | 'policy:create' | 'policy:update' | 'policy:delete' | 'support:read' | 'support:write' | 'access_event:read' | 'access_event:correct' | 'presence:read' | 'presence:reset' | 'edge_agent:read' | 'edge_agent:create' | 'edge_agent:revoke' | 'reader:read' | 'reader:create' | 'reader:revoke' | 'visit:read' | 'visit:create' | 'visit:update' | 'visit:checkin' | 'alert:read' | 'alert:manage' | 'biometric:read' | 'biometric:manage' | 'biometric:enroll' | 'device:command' | 'privacy:read' | 'privacy:manage'} Permission */
 
 /** @type {Readonly<Record<TenantRole, readonly Permission[]>>} */
 export const ROLE_PERMISSIONS = {
@@ -68,6 +68,9 @@ export const ROLE_PERMISSIONS = {
     'edge_agent:read',
     'edge_agent:create',
     'edge_agent:revoke',
+    'reader:read',
+    'reader:create',
+    'reader:revoke',
     'visit:read',
     'visit:create',
     'visit:update',
@@ -127,6 +130,9 @@ export const ROLE_PERMISSIONS = {
     'edge_agent:read',
     'edge_agent:create',
     'edge_agent:revoke',
+    'reader:read',
+    'reader:create',
+    'reader:revoke',
     'visit:read',
     'visit:create',
     'visit:update',
@@ -173,6 +179,8 @@ export const ROLE_PERMISSIONS = {
     'presence:reset',
     'edge_agent:read',
     'edge_agent:revoke',
+    'reader:read',
+    'reader:revoke',
     'visit:read',
     'visit:create',
     'visit:update',
@@ -232,6 +240,7 @@ export const ROLE_PERMISSIONS = {
     'access_event:read',
     'presence:read',
     'edge_agent:read',
+    'reader:read',
     'visit:read',
     'alert:read',
     'biometric:read',
@@ -249,6 +258,8 @@ export const ROLE_PERMISSIONS = {
     'access_point:update',
     'edge_agent:read',
     'edge_agent:create',
+    'reader:read',
+    'reader:create',
   ],
   viewer: ['site:read', 'zone:read'],
 };

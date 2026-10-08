@@ -30,7 +30,7 @@ const localInput = (d) => {
 };
 
 /** QR em SVG montado módulo a módulo (sem HTML injetado). @param {{ text: string }} props */
-function Qr({ text }) {
+export function Qr({ text }) {
   const { n, dark } = useMemo(() => {
     const qr = qrcode(0, 'M');
     qr.addData(text);

@@ -13,7 +13,7 @@
 | 8 | Hardware real (1 fabricante com documentação) | Teste de bancada documentado |
 | 9 | Hardening, backup/restore, DR | Security Audit + Adversarial Verify sem críticos |
 | 10–11 | Piloto controlado → RC | Critérios da Seção 58 do Prompt-Mestre |
-| Pós-MVP | Zela iD (antes "Zela Check-in", desenho em `25-ZELA-ID-DESENHO.md`): leitor em tablet/celular (PWA) que identifica e REGISTRA entrada/saída (ponto `register_only`, atuação opcional); **controle de acesso, não ponto** (dono, 08/10/2026; ver `24-PONTO-VIRTUAL-PESQUISA.md`) | Desenho do leitor, enrollment e chave de dispositivo, E2E no Edge sem driver de porta; facial só após benchmark e RIPD |
+| Pós-MVP | **Zela Pass** (leitor em tablet/celular, PWA; `25-ZELA-PASS-DESENHO.md`): IMPLEMENTADO e TESTADO local em 08/10/2026 (ponto register_only, HTTPS/WebSocket/TCP no Edge, painel, PWA). Pendente: teste em aparelho real, TLS real, app nativo (TCP), facial (benchmark + RIPD) | Piloto com tablet real e certificado confiável |
 
 ## Backlog de segurança (origem: Fase 9C, 07/10/2026)
 

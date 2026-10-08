@@ -33,6 +33,16 @@ create table if not exists pin_failures (
 create table if not exists command_nonces (
   id text primary key, expires_at text not null
 );
+create table if not exists readers (
+  reader_id text primary key, public_key text not null, label text, enrolled_at text not null, reported_at text
+);
+create table if not exists reader_nonces (
+  nonce text primary key, expires_at text not null
+);
+create table if not exists reader_attempts (
+  reader_id text not null, device_event_id text not null, outcome text not null, created_at text not null,
+  primary key (reader_id, device_event_id)
+);
 `;
 
 const BACKOFF_BASE_MS = 2_000;
@@ -192,6 +202,45 @@ export function openStore(path = ':memory:', { key } = {}) {
       ) === 1,
     purgeCommands: (beforeIso) =>
       Number(q('delete from command_nonces where expires_at < ?').run(beforeIso).changes),
+    // ---- leitores Zela Pass (D-027): chave pública do aparelho, anti-replay e idempotência por leitura
+    getReader: (readerId) =>
+      q(
+        'select reader_id as readerId, public_key as publicKey, label, enrolled_at as enrolledAt, reported_at as reportedAt from readers where reader_id = ?',
+      ).get(readerId) ?? null,
+    /** @returns {boolean} false se o leitor já estava ativado aqui (a chave nunca é trocada) */
+    enrollReader: (readerId, publicKey, label, nowIso) =>
+      Number(
+        q(
+          'insert or ignore into readers (reader_id, public_key, label, enrolled_at) values (?, ?, ?, ?)',
+        ).run(readerId, publicKey, label, nowIso).changes,
+      ) === 1,
+    unreportedReaders: () =>
+      q(
+        'select reader_id as readerId, public_key as publicKey, label from readers where reported_at is null order by enrolled_at limit 20',
+      ).all(),
+    markReaderReported: (readerId, nowIso) =>
+      void q('update readers set reported_at = ? where reader_id = ?').run(nowIso, readerId),
+    /** @returns {boolean} false se o nonce já foi usado (replay) */
+    claimReaderNonce: (nonce, expiresAtIso) =>
+      Number(
+        q('insert or ignore into reader_nonces (nonce, expires_at) values (?, ?)').run(
+          nonce,
+          expiresAtIso,
+        ).changes,
+      ) === 1,
+    purgeReaderNonces: (beforeIso) =>
+      Number(q('delete from reader_nonces where expires_at < ?').run(beforeIso).changes),
+    getReaderAttempt: (readerId, deviceEventId) =>
+      q('select outcome from reader_attempts where reader_id = ? and device_event_id = ?').get(
+        readerId,
+        deviceEventId,
+      )?.outcome ?? null,
+    saveReaderAttempt: (readerId, deviceEventId, outcome, nowIso) =>
+      void q(
+        'insert or ignore into reader_attempts (reader_id, device_event_id, outcome, created_at) values (?, ?, ?, ?)',
+      ).run(readerId, deviceEventId, outcome, nowIso),
+    purgeReaderAttempts: (beforeIso) =>
+      Number(q('delete from reader_attempts where created_at < ?').run(beforeIso).changes),
     clearPinFailures: (personId) =>
       void q('delete from pin_failures where person_id = ?').run(personId),
   };

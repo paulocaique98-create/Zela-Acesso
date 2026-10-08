@@ -11,3 +11,8 @@ export * from './commands.js';
 export * from './access.js';
 export * from './biometric.js';
 export * from './config.js';
+export * from './reader-service.js';
+export * from './reader-report.js';
+export * from './reader-http-server.js';
+export * from './reader-tcp-server.js';
+export * from './keys.js';

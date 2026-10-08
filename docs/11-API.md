@@ -57,6 +57,19 @@ Estado: **superfície interna da Fase 3** (RPCs Postgres e funções de domínio
 
 Status: `401` credencial inválida/revogada (genérico), `400` corpo inválido, `405`, `413` (>512 KB), `429` (rate limit), `502` erro do banco (sem detalhe). Regras de ingestão em `09-OFFLINE-FIRST.md` §6.
 
+### Gateway: `reader_enrolled` (Zela Pass, D-027)
+
+Mesma autenticação do agente. Corpo `{ op:'reader_enrolled', readerId, publicKey (64 hex), label? }` → RPC `edge_report_reader_enrolled` → `{ recorded: boolean }` (`false` = leitor inexistente/outro tenant/já ativo/revogado; a RPC não distingue). O snapshot (`snapshot`) passou a trazer `accessPoints[].actuation`, `readers[]` e `people[].refHash`.
+
+## 6b. Protocolo do leitor Zela Pass (Edge ↔ tablet/app)
+
+Definido em `packages/domain/src/reader.js`; implementado em `apps/edge-agent/src/reader-service.js`. Envelope `{ v:1, type, readerId, ts, nonce, body (texto JSON), sig }`, Ed25519 sobre `zela-reader/v1
+<type>
+<readerId>
+<ts>
+<nonce>
+<sha256(body)>`. Tipos: `enroll` (código `zrd_`+64 hex e chave pública; `readerId` fixo `enroll`), `status`, `attempt` (`method` pin|qr|barcode + `deviceEventId`). Transportes: `POST /reader/v1/message` (HTTPS), `GET /reader/v1/ws` (WebSocket, uma resposta por mensagem), TCP NDJSON. Resposta `{ ok, code, serverTime, ... }`; `attempt` ok traz `outcome` (REGISTERED | NOT_AUTHORIZED | INVALID_CREDENTIAL | CHALLENGE_REQUIRED) e `label`. Códigos de erro: MALFORMED(400), UNSUPPORTED_VERSION(400), UNAUTHORIZED(401), CLOCK_SKEW(401), REPLAY(401), REVOKED(403), ENROLL_REJECTED(403), POINT_UNAVAILABLE(409), RATE_LIMITED(429), NO_SNAPSHOT(503). RPCs do painel: `create_access_reader(p_point, p_name)`, `revoke_access_reader(p_reader, p_reason)`.
+
 ## 7. Pendências
 
 - Contratos versionados (`packages/contracts`), assinatura de webhooks e OpenAPI: Fases 4+. O gateway do agente não tem versionamento de protocolo ainda.

@@ -83,6 +83,7 @@ function resolveCredential(store, index, tenantId, cred, now, cfg) {
  *   emergencyActive?: boolean,
  *   biometric?: { accepted: boolean, reasonCode: string },  // resultado de verifyBiometricAttempt; ausente = recusa
  *   device?: { trusted: boolean } | null,
+ *   reader?: { readerId: string, method: string, mode: 'register_only' | 'actuate' } | null,  // Zela Pass (D-027)
  *   config?: Partial<typeof DEFAULT_CONFIG>,
  *   newId?: () => string,
  * }} input
@@ -209,6 +210,7 @@ export function processAccessAttempt(input) {
         source: 'EDGE_AGENT',
         correlationId,
         idempotencyKey: `edge:${newId()}`,
+        reader: input.reader ?? null,
       });
       if (!point) {
         // ponto desconhecido: não propagar um id forjado/estranho para a nuvem

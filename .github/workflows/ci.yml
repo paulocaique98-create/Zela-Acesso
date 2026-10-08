@@ -75,15 +75,19 @@ jobs:
         run: node apps/edge-agent/e2e/device-key.e2e.mjs
       - name: E2E da eliminação biométrica (revogar, Edge apaga, confirmação, erased)
         run: node apps/edge-agent/e2e/biometric-erasure.e2e.mjs
+      - name: E2E do Zela Pass (leitor -> Edge sem driver de porta -> nuvem; HTTPS, WebSocket e TCP)
+        run: node apps/edge-agent/e2e/zela-pass.e2e.mjs
       - name: Env publico, build e varredura de segredos no bundle
         run: |
           node scripts/write-web-env.mjs
           pnpm build
           node scripts/check-bundle-secrets.mjs
+      - name: Navegador (Chromium) para os E2E
+        run: pnpm exec playwright install --with-deps chromium
+      - name: E2E do leitor Zela Pass no navegador (PWA + Edge em processo)
+        run: node apps/reader/e2e/reader.browser.mjs
       - name: E2E (Playwright)
-        run: |
-          pnpm exec playwright install --with-deps chromium
-          pnpm exec playwright test
+        run: pnpm exec playwright test
       - name: Encerrar Supabase local
         if: always()
         run: node scripts/supabase-local.mjs stop

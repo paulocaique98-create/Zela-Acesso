@@ -37,6 +37,7 @@ const NAV = [
         permission: 'access_point:read',
         siteLevel: true,
       },
+      { to: '/leitores', label: 'Leitores Zela Pass', permission: 'reader:read', siteLevel: true },
     ],
   },
   {

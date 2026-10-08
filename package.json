@@ -21,6 +21,8 @@
     "db:seed": "node scripts/seed-dev.mjs",
     "check:bundle": "node scripts/check-bundle-secrets.mjs",
     "e2e": "playwright test",
+    "e2e:pass": "node apps/edge-agent/e2e/zela-pass.e2e.mjs",
+    "e2e:reader": "node apps/reader/e2e/reader.browser.mjs",
     "rbac:drift": "node scripts/check-rbac-drift.mjs",
     "db:stop": "node scripts/supabase-local.mjs stop"
   },

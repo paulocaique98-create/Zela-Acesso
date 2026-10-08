@@ -24,8 +24,13 @@ export const IDS = {
   visitorToken: 'a0000000-0000-0000-0000-0000000000a9',
   visit: 'b0000000-0000-0000-0000-0000000000a9',
   otherZone: '30000000-0000-0000-0000-0000000000a2',
+  registerPoint: '40000000-0000-0000-0000-0000000000a3',
+  reader: 'c0000000-0000-0000-0000-0000000000a1',
+  reader2: 'c0000000-0000-0000-0000-0000000000a2',
 };
 
+export const ANA_REF = 'M-309';
+export const ENROLL_CODE = `zrd_${'ab'.repeat(32)}`;
 export const ANA_PIN = '482913';
 export const ANA_CARD = 'ab12cd34';
 export const ANA_TOKEN = 'token-sintetico-de-alta-entropia';
@@ -37,7 +42,7 @@ export const MONDAY_10H = new Date('2026-10-05T14:00:00Z');
 /** Segunda-feira 20:00 em Manaus: fora da janela. */
 export const MONDAY_20H = new Date('2026-10-06T00:00:00Z');
 
-/** @param {{ offlineBehavior?: string, apbMode?: string, bobStatus?: string }} [o] */
+/** @param {{ offlineBehavior?: string, apbMode?: string, bobStatus?: string, readers?: object[] }} [o] */
 export function makeSnapshot(o = {}) {
   return {
     version: 1,
@@ -62,7 +67,17 @@ export function makeSnapshot(o = {}) {
         emergencyBehavior: 'fail_safe',
         offlineBehavior: 'degraded_allow',
       },
+      {
+        id: IDS.registerPoint,
+        zoneId: IDS.zone,
+        status: 'active',
+        direction: 'entry',
+        emergencyBehavior: 'fail_safe',
+        offlineBehavior: 'degraded_allow',
+        actuation: 'none',
+      },
     ],
+    readers: o.readers ?? [],
     policies: [
       {
         id: IDS.policy,
@@ -87,7 +102,7 @@ export function makeSnapshot(o = {}) {
     ],
     groupMembers: [{ groupId: IDS.group, personId: IDS.ana }],
     people: [
-      { id: IDS.ana, status: 'active' },
+      { id: IDS.ana, status: 'active', refHash: sha256(`${IDS.tenant}:${ANA_REF}`) },
       { id: IDS.bob, status: o.bobStatus ?? 'active' },
     ],
     credentials: [

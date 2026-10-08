@@ -72,7 +72,9 @@ test.describe('MFA TOTP (Fase 9B)', () => {
     await expect(page.getByRole('alert')).toContainText('inválido');
     await page.getByLabel(/Código de 6 dígitos/).fill(totp(secret));
     await page.getByRole('button', { name: 'Verificar' }).click();
-    await expect(page.getByRole('link', { name: 'Membros', includeHidden: true })).toBeAttached({ timeout: 15_000 });
+    await expect(page.getByRole('link', { name: 'Membros', includeHidden: true })).toBeAttached({
+      timeout: 15_000,
+    });
 
     // Sessao aal1 (so senha) chamando a API direto: o banco nega mesmo sem a UI.
     const r = await fetch('http://127.0.0.1:55321/auth/v1/token?grant_type=password', {
@@ -144,7 +146,9 @@ test.describe('MFA TOTP (Fase 9B)', () => {
     const secret2 = (await page.locator('details code').innerText()).trim();
     await page.getByLabel('Código de 6 dígitos').fill(totp(secret2));
     await page.getByRole('button', { name: 'Ativar' }).click();
-    await expect(page.getByRole('link', { name: 'Membros', includeHidden: true })).toBeAttached({ timeout: 15_000 });
+    await expect(page.getByRole('link', { name: 'Membros', includeHidden: true })).toBeAttached({
+      timeout: 15_000,
+    });
 
     // Codigo ja usado nao existe mais (todos foram apagados no uso).
     const left = await admin.from('mfa_recovery_codes').select('id').eq('user_id', userId);

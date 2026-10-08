@@ -35,6 +35,25 @@ Legenda de estado: TESTADO (há teste automatizado executado) · IMPLEMENTADO (c
 | Configuração de emergência incorreta | B | A | Modo fail-safe/secure por ponto — IMPLEMENTADO | Vitest `access-point.test.js` | **Alto**: nada impede o instalador de configurar errado; só validação humana no local |
 | Perda de dados / sem backup-restore | B | A | Procedimento e script `scripts/db-backup.mjs` (`22-BACKUP-DR.md`) — IMPLEMENTADO local | TESTADO local (restauração confere contagens e `verify_access_chain`); Storage, backup do provedor e remoto NÃO verificados | **Médio** (alto até validar backup do provedor) |
 
+## Zela Pass: leitor em tablet/celular (D-027, 08/10/2026)
+
+Detalhes em `25-ZELA-PASS-DESENHO.md`. Estado: IMPLEMENTADO e TESTADO local; **sem pentest, sem teste em aparelho real**.
+
+| Ameaça | P | I | Mitigação (estado) | Risco residual |
+|---|---|---|---|---|
+| Leitor falso / mensagem forjada | M | A | Assinatura Ed25519 por mensagem com chave do aparelho (privada não extraível), nonce, ±120 s, ativação com prova de posse — TESTADO (Vitest, E2E) | **Baixo/Médio**: a privada fica protegida pelo navegador/SO, sem atestação de hardware |
+| Replay de mensagem ou de leitura | M | M | Nonce único + `deviceEventId` idempotente — TESTADO | Baixo |
+| Tablet roubado/perdido | M | A | Revogação no painel (irreversível, auditada); Edge recusa após o próximo snapshot — TESTADO | **Médio**: até 5 min de janela; roubo do aparelho + conhecimento de credenciais ainda registra marcação |
+| Força bruta de senha pelo leitor | M | M | Bloqueio por pessoa (5 → 5 min), 30 msg/min por leitor, resposta igual para identificador inexistente — TESTADO | Médio: bloqueio por pessoa permite negar serviço a quem conhece a matrícula |
+| Foto/cópia de QR ou código de barras | A | M | Token móvel com expiração e revogação; cartão por hash. QR estático impresso continua copiável | **Médio** (inerente à credencial); mitigar com validade curta |
+| Vazamento de segredo em log/evidência/tela | M | A | Evidência e registros só guardam método/resultado; Registros sem nome nem valor; testes procuram PIN/token/cartão — TESTADO | Baixo |
+| Interceptação na LAN | M | A | TLS obrigatório em produção fora de loopback (`config.js`); mensagens já assinadas — config TESTADO, **TLS real NÃO testado** | **Médio** até haver certificado confiável por cliente |
+| Operador não autorizado mexe no tablet | M | M | PIN local (PBKDF2, 5 erros = 5 min); desativar só apaga o aparelho — TESTADO | **Médio**: guarda local, não autenticação forte; quem tem o aparelho pode apagá-lo (o painel mostra "ativo" até revogar) |
+| Relógio do tablet adulterado | M | M | Hora do Edge manda; desvio corrigido por mensagem — TESTADO | Baixo |
+| XSS/conteúdo malicioso no PWA | B | A | CSP `default-src 'self'` sem inline, sem dependência de CDN, bundle varrido por segredos — TESTADO (navegador sem violação de CSP) | Baixo |
+| Código de ativação interceptado | B | M | Alta entropia, uso único, 24 h, só hash no banco/snapshot, mostrado uma vez — TESTADO | Baixo/Médio até o uso |
+| Edge comprometido | B | A | Fora do escopo do leitor: mesmo risco do agente (ver acima); leitor revogado não ajuda | Ver Edge |
+
 ## Resumo do checkpoint de segurança (§70)
 
 - Isolamento, RBAC, auditoria e comando assinado têm cobertura automatizada sólida.

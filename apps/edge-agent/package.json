@@ -18,7 +18,8 @@
     "@zela/biometrics": "workspace:*",
     "@zela/device-drivers": "workspace:*",
     "@zela/domain": "workspace:*",
-    "bcryptjs": "^3.0.2"
+    "bcryptjs": "^3.0.2",
+    "ws": "8.21.3"
   },
   "devDependencies": {
     "vitest": "^5.0.3"

@@ -1,5 +1,5 @@
 # Status — Zela Acesso
-Atualizado: 2026-10-07
+Atualizado: 2026-10-08
 
 - **Fase 0**: aprovada pelo dono em 2026-10-06 (docs 01–04, 07, 14, 15, 19, 20, CLAUDE.md).
 - **Fase 1** (fundação): **implementada e testada localmente; gate cumprido; aguardando aprovação do dono**.
@@ -20,6 +20,12 @@ Atualizado: 2026-10-07
 | Sem segredo/service_role no bundle | TESTADO | `scripts/check-bundle-secrets.mjs` |
 | Falsificação: policy permissiva injetada de propósito | VALIDADO | a suíte pgTAP falhou 8 testes; banco restaurado por reset |
 | CI (`.github/workflows/ci.yml`) | NÃO TESTADO | nunca executado (sem remote git); actions fixadas por tag major, não verificadas |
+
+## Zela Pass — leitor em tablet/celular (08/10/2026)
+- **IMPLEMENTADO e TESTADO local** (`25-ZELA-PASS-DESENHO.md`, D-027): domínio (`reader.js`), migration `20261107120000_zela_pass_readers.sql` (ponto `register_only`, `access_readers`, permissões `reader:*`, snapshot com `actuation`/`readers`/`refHash`), op `reader_enrolled` no gateway, serviço do leitor no Edge com **HTTPS, WebSocket e TCP/IP**, telas do painel (Modo do ponto, Leitores Zela Pass) e PWA `apps/reader`.
+- **Testes executados:** Vitest domain 296, edge 231, leitor 12, web 26; pgTAP 1104 (31 arquivos); `rbac:drift` 228; E2E com banco `zela-pass.e2e.mjs` 19/19 (Edge sem driver de porta + daemon real); E2E de navegador `reader.browser.mjs` 18/18 (Chromium); Playwright `readers.spec.js` 3/3 e `physical.spec.js`; regressão dos E2Es do Edge. O pgTAP `11_phase3d_antipassback` falhou 1 vez numa execução e passou nas seguintes (intermitente, causa não investigada).
+- **NÃO testado:** tablet/celular real, câmera real, Safari/Firefox, TLS/WSS real, PWA instalado, modo quiosque, carga. **Backlog (não obrigatório, decidido em 08/10/2026):** cliente TCP (app nativo; o servidor TCP já existe e é testado), facial (exige benchmark + RIPD antes), revogação por empurrão (mantidos 5 min no MVP, ver `25-`). **Ação do dono (externa):** conferir o nome "Zela Pass" no INPI.
+- O `db reset` desta sessão recriou o banco local; `seed-dev` foi reexecutado.
 
 ## Fase 2 — em andamento (iniciada em 2026-10-06)
 Fatiada. **2A (zonas, pessoas, grupos, membros de grupo): banco IMPLEMENTADO e TESTADO** — migration `20261007120000_phase2a_zones_people_groups.sql`; pgTAP 145/145 (84 da Fase 1 + 61 novos: cross-tenant, FK composta, escopo por site, matriz por papel, privilégios por coluna, auditoria sem nome/external_ref); Vitest 21+8; lint/format limpos; `rbac:drift` 84 permissões idênticas. Matriz RBAC 33 → 84.

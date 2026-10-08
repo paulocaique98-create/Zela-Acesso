@@ -1,3 +1,5 @@
+> **Atualização 08/10/2026:** o leitor proposto aqui foi desenhado e implementado como **Zela Pass** (nome do dono; antes "Zela Check-in"). Ver `25-ZELA-PASS-DESENHO.md`; este documento fica como pesquisa de origem.
+
 # 24 — Pesquisa: coletor virtual de ponto e acesso (referência: Secullum Checkin / Ponto Virtual)
 
 Data: 08/10/2026 (revisada no mesmo dia: a 1ª versão olhou o produto errado, o app "Ponto Web – Funcionários"). Status: **PESQUISA, nada implementado**. O limite permanente do projeto diz "acesso físico ≠ ponto; sem REP/AFD, folha, vigilância/monitoramento profissional no MVP". A parte de **acesso** do Checkin cabe no Zela Acesso; a parte de **ponto (REP-P)** só começa depois do MVP e exige o dono alterar esse limite no `PROMPT_MESTRE_ZELA_ACESSO_CLAUDE_CODE.md` e em `19-DECISIONS.md`.
