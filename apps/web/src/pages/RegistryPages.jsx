@@ -871,10 +871,14 @@ function SiteForm({ site, tenantId, onDone }) {
   const [f, setF] = useState({
     name: site?.name ?? '',
     timezone: site?.timezone ?? 'America/Sao_Paulo',
+    zela_pass_url: site?.zela_pass_url ?? '',
   });
   const submit = (e) => {
     e.preventDefault();
-    const body = { name: f.name.trim(), timezone: f.timezone };
+    const url = f.zela_pass_url.trim().replace(/\/+$/, '');
+    if (url && !/^https:\/\/[A-Za-z0-9][A-Za-z0-9.-]*(:\d{1,5})?$/.test(url))
+      return toast.error('Endereço do Zela Pass: use https://endereço ou https://endereço:porta.');
+    const body = { name: f.name.trim(), timezone: f.timezone, zela_pass_url: url || null };
     void save(
       () =>
         site
@@ -913,6 +917,20 @@ function SiteForm({ site, tenantId, onDone }) {
           ))}
         </select>
       </Field>
+      <Field label="Endereço do Zela Pass (opcional)">
+        <input
+          className={INPUT}
+          maxLength={200}
+          inputMode="url"
+          placeholder="https://192.168.0.10:8443"
+          value={f.zela_pass_url}
+          onChange={(e) => setF({ ...f, zela_pass_url: e.target.value })}
+        />
+        <span className="mt-1 block text-xs text-on-surface-variant">
+          Endereço do computador Edge deste local, na rede dos tablets. Com ele, a tela de Leitores
+          gera o link para abrir o Zela Pass.
+        </span>
+      </Field>
       <button type="submit" className={BTN_PRIMARY} disabled={busy}>
         {busy ? 'Salvando…' : 'Salvar'}
       </button>
@@ -926,7 +944,7 @@ export function SitesPage() {
   const q = useQuery(async () => {
     const { data, error } = await supabase
       .from('sites')
-      .select('id, name, timezone')
+      .select('id, name, timezone, zela_pass_url')
       .eq('tenant_id', current?.id ?? '')
       .order('name')
       .limit(200);

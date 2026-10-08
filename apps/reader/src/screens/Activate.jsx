@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { QrCode } from 'lucide-react';
 import { isEnrollmentCode, validatePin } from '@zela/domain';
 import {
@@ -21,10 +21,22 @@ const ERRORS = {
   UNAVAILABLE: 'Não foi possível falar com o Edge neste endereço.',
 };
 
+/** Código de ativação vindo do link do painel (`#codigo=zrd_...`); o fragmento nunca vai ao servidor. */
+function codeFromLink() {
+  const v = new URLSearchParams(window.location.hash.slice(1)).get('codigo')?.trim() ?? '';
+  return isEnrollmentCode(v) ? v : '';
+}
+
 /** Primeira configuração: endereço do Edge + código de ativação (gerado no painel) + PIN do operador deste aparelho. */
 export function Activate({ defaultEdgeUrl, sameOrigin, onActivate, supported }) {
   const [edgeUrl, setEdgeUrl] = useState(defaultEdgeUrl);
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(codeFromLink);
+  useEffect(() => {
+    // o código é de uso único: não deixa o link com o segredo no histórico nem na barra do navegador
+    if (window.location.hash.includes('codigo=')) {
+      window.history.replaceState(null, '', window.location.pathname + window.location.search);
+    }
+  }, []);
   const [label, setLabel] = useState('');
   const [pin, setPin] = useState('');
   const [pin2, setPin2] = useState('');

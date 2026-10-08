@@ -43,7 +43,12 @@ function ReaderForm({ points, onCreated, onCancel }) {
       );
     }
     const row = Array.isArray(data) ? data[0] : data;
-    onCreated({ name: f.name.trim(), code: row.enrollment_code, expires: row.expires_at });
+    onCreated({
+      name: f.name.trim(),
+      code: row.enrollment_code,
+      expires: row.expires_at,
+      point: f.point,
+    });
   };
   return (
     <form onSubmit={submit} className="space-y-3">
@@ -84,8 +89,18 @@ function ReaderForm({ points, onCreated, onCancel }) {
   );
 }
 
-/** Código de ativação mostrado uma única vez, em texto e QR. */
-function ActivationModal({ created, onClose }) {
+const NO_URL_HINT =
+  'Informe o endereço do Zela Pass deste local em Locais → Editar para gerar o link.';
+
+function copyText(text, okMessage) {
+  void navigator.clipboard?.writeText(text).then(
+    () => toast.success(okMessage),
+    () => toast.error('Não foi possível copiar.'),
+  );
+}
+
+/** Código de ativação mostrado uma única vez, em texto e QR. `edgeUrl`: endereço do Zela Pass do local (ou null). */
+function ActivationModal({ created, edgeUrl, onClose }) {
   return (
     <Modal title="Código de ativação" onClose={onClose}>
       <div className="space-y-3">
@@ -96,18 +111,29 @@ function ActivationModal({ created, onClose }) {
         </p>
         <Qr text={created.code} />
         <code className="block break-all text-center text-xs select-all">{created.code}</code>
-        <button
-          type="button"
-          className={BTN_GHOST}
-          onClick={() => {
-            void navigator.clipboard?.writeText(created.code).then(
-              () => toast.success('Código copiado.'),
-              () => toast.error('Não foi possível copiar.'),
-            );
-          }}
-        >
-          Copiar código
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={BTN_GHOST}
+            onClick={() => copyText(created.code, 'Código copiado.')}
+          >
+            Copiar código
+          </button>
+          <button
+            type="button"
+            className={BTN_GHOST}
+            onClick={() =>
+              edgeUrl
+                ? copyText(
+                    `${edgeUrl}/#codigo=${created.code}`,
+                    'Link copiado. Ele já leva o código de ativação: envie só ao responsável pelo aparelho.',
+                  )
+                : toast.error(NO_URL_HINT)
+            }
+          >
+            Copiar link de ativação
+          </button>
+        </div>
         <div className="flex justify-end">
           <button type="button" className={BTN_PRIMARY} onClick={onClose}>
             Já anotei
@@ -188,7 +214,12 @@ export function ReadersPage() {
         .eq('tenant_id', tenantId)
         .order('name')
         .limit(500),
-      supabase.from('sites').select('id, name').eq('tenant_id', tenantId).order('name').limit(200),
+      supabase
+        .from('sites')
+        .select('id, name, zela_pass_url')
+        .eq('tenant_id', tenantId)
+        .order('name')
+        .limit(200),
     ]);
     for (const x of [r, p, s]) if (x.error) throw x.error;
     return { readers: r.data, points: p.data, sites: s.data };
@@ -214,6 +245,7 @@ export function ReadersPage() {
           {({ readers, points, sites }) => {
             const pointOf = new Map(points.map((p) => [p.id, p]));
             const siteName = new Map(sites.map((s) => [s.id, s.name]));
+            const siteUrl = new Map(sites.map((s) => [s.id, s.zela_pass_url]));
             const usable = points.filter(
               (p) => p.status === 'active' && allowed('reader:create', p.site_id),
             );
@@ -235,15 +267,29 @@ export function ReadersPage() {
                         : r.status === 'active'
                           ? `Ativado em ${fmt(r.enrolled_at)}${r.device_label ? ` (${r.device_label})` : ''}`
                           : `Revogado em ${fmt(r.revoked_at)}: ${r.revoked_reason ?? ''}`,
-                      r.status !== 'revoked' && allowed('reader:revoke', r.site_id) ? (
-                        <button
-                          key={r.id}
-                          type="button"
-                          className={`${BTN_GHOST} text-error`}
-                          onClick={() => setRevoking(r)}
-                        >
-                          Revogar
-                        </button>
+                      r.status !== 'revoked' ? (
+                        <div key={r.id} className="flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className={BTN_GHOST}
+                            onClick={() =>
+                              siteUrl.get(r.site_id)
+                                ? copyText(siteUrl.get(r.site_id), 'Link do Zela Pass copiado.')
+                                : toast.error(NO_URL_HINT)
+                            }
+                          >
+                            Copiar link
+                          </button>
+                          {allowed('reader:revoke', r.site_id) && (
+                            <button
+                              type="button"
+                              className={`${BTN_GHOST} text-error`}
+                              onClick={() => setRevoking(r)}
+                            >
+                              Revogar
+                            </button>
+                          )}
+                        </div>
                       ) : null,
                     ];
                   })}
@@ -274,7 +320,13 @@ export function ReadersPage() {
                     />
                   </Modal>
                 )}
-                {created && <ActivationModal created={created} onClose={() => setCreated(null)} />}
+                {created && (
+                  <ActivationModal
+                    created={created}
+                    edgeUrl={siteUrl.get(pointOf.get(created.point)?.site_id) ?? null}
+                    onClose={() => setCreated(null)}
+                  />
+                )}
               </>
             );
           }}
