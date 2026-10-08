@@ -21,6 +21,16 @@ Como o Checkin integra ao acesso (FAQ oficial): cadastra-se o Checkin como contr
 
 Fontes: [Secullum Checkin – FAQ](https://www.secullum.com.br/pt/canal-cliente/perguntas/552), [Checkin com sistemas de acesso](https://www.secullum.com.br/pt/canal-cliente/perguntas/527), [Secullum Ponto Virtual – FAQ](https://www.secullum.com.br/pt/canal-cliente/perguntas/1161), [Blog: Secullum apresenta o Ponto Virtual](https://www.secullum.com.br/blog/a-secullum-apresenta-o-ponto-virtual-o-futuro-do-controle-de-frequencia/), [BioWeb](https://www.secullum.com.br/en/canal-cliente/perguntas/1158). A página `/pt/produtos/checkin` redireciona para uma lista de produtos descontinuados e não serviu. Planos e preços ficam com as revendas (não levantei).
 
+## Correção do dono (08/10/2026): identificar para REGISTRAR, não para abrir
+
+O uso principal desses coletores é **registrar a entrada e a saída** para ter controle mais eficiente; reconhecer o rosto (ou ler QR/senha) não precisa abrir nada. Isto muda o desenho:
+
+- **Ponto de registro sem atuação** (`register_only`): o leitor identifica a pessoa, o Edge avalia, e o resultado é um **evento de presença/marcação** na evidência append-only. Não há driver de porta, nem comando, nem `physical_outcome`. É mais simples e mais seguro que abrir porta: o pior erro é uma marcação indevida, não uma porta aberta.
+- **Reuso**: já existem presença local (`presence`), anti-passback, direção entrada/saída no ponto e eventos append-only. Falta o ponto sem atuador e o tipo de evento "marcação" (hoje o resultado se resume a ALLOW/DENY seguido de atuação). A decisão do motor continua útil: diz se a pessoa é reconhecida e autorizada naquele local/horário, mas "ALLOW" passa a significar "marcação aceita", sem abrir.
+- **Atuação é opcional e separada**: o mesmo leitor pode, se o ponto tiver driver, também abrir (modo Checkin com catraca). Os dois modos usam a mesma identificação.
+- **Onde a fronteira legal passa**: registrar presença para segurança/operação (quem está no prédio, visitantes, anti-passback) é controle de acesso. Registrar a **jornada de trabalho** de empregados é ponto: a Portaria 671 trata o registrador de jornada (REP-P) com certificação, AFD/AEJ e comprovante, e o limite do projeto exclui isso do MVP. O mesmo leitor serve aos dois, o que muda é **o que a organização faz com o dado**; esta fronteira precisa de parecer jurídico (a confirmar, não afirmo aqui) e de configuração explícita por organização, com texto de finalidade no RIPD.
+- **LGPD**: o facial para registro de presença segue sendo biométrico/sensível, independentemente de abrir porta. Finalidade, base legal, retenção e alternativa sem biometria (senha/QR) são obrigatórias, e "monitoramento profissional" continua fora do MVP.
+
 ## Leitura para o Zela Acesso
 
 - **Já temos a base**: o Zela tem pessoas/credenciais, motor determinístico, evidência append-only, Edge offline com fila idempotente, comando assinado de abertura, módulo de biometria e driver de catraca/porta. Um "Zela Check-in" seria um **novo tipo de leitor** (app em tablet/celular) no modelo domínio → abstração → driver, não uma reescrita.
@@ -40,7 +50,7 @@ Fontes secundárias (fornecedores); **o texto oficial e o Anexo IX precisam ser 
 
 ## Decisões para o dono
 
-1. **Fatiar em dois produtos**: (A) **Zela Check-in de acesso** (leitor em tablet/celular para portaria, dentro do escopo de controle de acesso) e (B) **Zela Ponto** (marcação com valor legal, pós-MVP). Recomendação: fazer só o (A) primeiro; ele reaproveita quase tudo e não exige certificação.
+1. **Fatiar em dois produtos**: (A) **Zela Check-in** (leitor em tablet/celular que identifica e REGISTRA entrada/saída, com atuação opcional; dentro do escopo de controle de acesso enquanto não for registro de jornada) e (B) **Zela Ponto** (marcação com valor legal, pós-MVP). Recomendação: fazer só o (A) primeiro; ele reaproveita quase tudo e não exige certificação.
 2. Para o (B): ser REP-P certificado (INPI, AFD/AEJ, hora legal, comprovante) ou apenas coletar marcações para um sistema de ponto já regularizado.
 3. **LGPD**: geolocalização e facial são dados pessoais (facial é biométrico/sensível); consentimento em relação de emprego é frágil; precisa de base legal, RIPD e parecer jurídico, e colide com o limite "sem vigilância/monitoramento profissional".
 4. Plataforma do app (PWA no navegador do tablet, Android nativo ou ambos): PWA evita loja e distribuição, mas tem menos acesso a câmera/kiosk/offline robusto. Decidir com um protótipo.
@@ -48,5 +58,5 @@ Fontes secundárias (fornecedores); **o texto oficial e o Anexo IX precisam ser 
 ## Próximos passos (quando o dono abrir a fase)
 
 1. Dono: escolher (A) agora e (B) depois; confirmar se há cliente piloto com tablet na portaria.
-2. Para (A): desenhar o leitor como novo `AccessReader` no domínio (tipo tablet), com enrollment e chave de dispositivo do tablet, mapeando QR/barras/PIN para as credenciais existentes; E2E contra o Edge com driver mock; facial só depois do benchmark.
+2. Para (A): desenhar o leitor como novo `AccessReader` (tipo tablet) com enrollment e chave de dispositivo, ponto `register_only` (sem atuador) e evento de marcação; mapear QR/barras/PIN para as credenciais existentes; E2E contra o Edge sem driver de porta; atuação opcional e facial só depois do benchmark.
 3. Para (B): ler a Portaria 671 e o Anexo IX no gov.br, preencher `07-REGULATORY-MATRIX.md` e pedir parecer jurídico antes de requisitos.
