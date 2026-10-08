@@ -162,13 +162,12 @@ function TenantModal({ tenant, details, onClose, onSaved }) {
   );
 
   return (
-    <div className={`${modalBackdrop} !items-center sm:p-4`} onClick={onClose}>
+    <div className={`${modalBackdrop} !items-center sm:p-4`}>
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="tenant-modal-title"
         className="flex max-h-[92vh] w-full max-w-2xl flex-col overflow-hidden rounded-zela-xl border border-outline-variant bg-white shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-outline-variant bg-surface px-5 py-4">
           <h2
@@ -586,7 +585,7 @@ export function TenantsPage() {
         </p>
       ) : (
         <>
-          <table className="hidden w-full border-collapse overflow-hidden rounded-zela-md border border-outline-variant bg-surface-container-lowest md:table">
+          <table className="hidden w-full border-collapse rounded-zela-md border border-outline-variant bg-surface-container-lowest md:table">
             <caption className="sr-only">Organizações cadastradas</caption>
             <thead>
               <tr className="bg-surface-container-low text-left text-[10px] font-bold tracking-wide text-on-surface-variant uppercase">
